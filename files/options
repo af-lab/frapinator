@@ -1,0 +1,29 @@
+## Flags are here
+options.flag_threshold  = 1;      # 0 = automatic threshold using Otsu's method; 1 = manually set threshold in threshold_value
+options.flag_correct    = 1;      # Photobleach correction. 0 = infinite nucleus (no fluorescence loss); 1 = finite nucleus (fluorescence loss)
+options.flag_log_image  = 1;      # 0 = no log image is saved; 1 = log image with important frames and masks is saved
+
+## Set variables for image processing
+options.nFrames         = 2500;   # Number of total frames in the image (should be replaced later for length(imfinfo(file_path))
+options.nPre_bleach     = 100;    # Number of prebleach frames
+options.tScan           = 0.033;  # Scan time for one frame [s]
+options.bleach_diameter = 40;     # Diameter of bleached area [px]
+options.pixel_size      = 0.1;    # Size of a pixel [µm]
+options.avg_start       = 10;     # Number of start frame to use when averaging to create image where to find background and cell nucleus
+options.avg_end         = 100;    # Number of final frame to use when averaging to create image where to find background and cell nucleus
+options.pre_start       = 50;     # Number of start frame to use when averaging to create pre-bleach image where to find bleach spot
+options.pre_end         = 100;    # Number of final frame to use when averaging to create pre-bleach image where to find bleach spot
+options.post_start      = 101;    # Number of start frame to use when averaging to create post-bleach image where to find bleach spot
+options.post_end        = 105;    # Number of final frame to use when averaging to create post-bleach image where to find bleach spot
+
+
+options.backg_size      = 30;     # Width (and height) in pixels of the background area
+options.threshold_value = 20;     # Intensity to threshold the first image. Only needed if flag_threshold > 0
+options.nNorm           = 10;     # Number of frames, previous to bleach frame, to use for normalization
+options.binning_start   = 20;     # Number of frames after the bleach to skip before start binning
+options.bleach_factor   = 1.25;   # Factor of change to measure the bleach area from the diameter of the bleach spot
+
+## Set variables for data fitting
+options.resolution      = 2.5;    # Resolution of the image. Will be used for fitting of radial profile
+options.nSkip_profile   = 3;      # Number of radial point which get skipped when fitting the radial intensity profile
+options.Df              = 200;    # Initial guess for Df
