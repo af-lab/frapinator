@@ -6,10 +6,10 @@
 close all;
 clear all;
 clc;
-main.script_version = "$Revision-Id";
-pkg load zenity; # control is dependency for image and leasqr is in optim
+main.script_version = "$Revision-Id$";
+pkg load zenity;
 pkg load image;
-pkg load optim;
+pkg load optim; # leasqr belongs to optim package
 addpath ("./functions/");
 
 source ("./files/options");
@@ -316,14 +316,14 @@ for iGeneral = 1:length(main.file_list)
   axis ([0 fitting_times(end) 0.2 1])
 
   subplot(2, 3, 5)
-  plot (log_bin.timestamps, [fitting_intensities; full_model_2.yFitted'])
+  plot (fitting_times, [fitting_intensities; full_model_2.yFitted'])
   title("Fitting with Full Model (Kon Koff)")
   text (20,0.4, ["Kon = ", num2str(full_model_2.kon)])
   text (20,0.3, ["Koff = ", num2str(full_model_2.koff)])
   axis ([0 fitting_times(end) 0.2 1])
 
   subplot(2, 3, 6)
-  plot (log_bin.timestamps, [fitting_intensities; full_model_3.yFitted'])
+  plot (fitting_times, [fitting_intensities; full_model_3.yFitted'])
   title("Fitting with Full Model (Kon Koff Df)")
   text (20,0.5, ["Df = ", num2str(full_model_3.Df)])
   text (20,0.4, ["Kon = ", num2str(full_model_3.kon)])
