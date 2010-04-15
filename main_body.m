@@ -6,7 +6,7 @@
 close all;
 clear all;
 clc;
-main.script_version = "0.1.00";
+main.script_version = "$Revision-Id";
 pkg load zenity; # control is dependency for image and leasqr is in optim
 pkg load image;
 pkg load optim;
@@ -24,7 +24,7 @@ endif
 
 ## Get file list of files from user
 do
-  current_files = zenity_file_selection("Choose files to analyze", 'multiple');
+  current_files = zenity_file_selection("title", "Choose files to analyze", 'multiple');
   if(!isfield (main, "file_list") && !isempty(current_files{1}))
     main.file_list = current_files;
   elseif(!isempty(current_files{1}))
@@ -188,6 +188,21 @@ for iGeneral = 1:length(main.file_list)
 
   image = rmfield (image, "here");
 
+
+  ## Data used for fitting.
+  # 1 = logaritmic binned
+  # 2 = data from processed images
+  switch options.flag_fit_data
+    case 1
+      fitting_times       = log_bin.timestamps;
+      fitting_intensities = log_bin.normalized_xy_mean;
+    case 2
+      fitting_times       = image.timestamps(options.nPre_bleach+1:end);
+      fitting_intensities = bleach.normalized_xy_mean(options.nPre_bleach+1:end);
+    otherwise
+      error ("Non supported flag for data for fitting.\n")
+  endswitch
+
   ## Fitting of the radial profile
   [...
   profile.rCon ...
@@ -219,8 +234,8 @@ for iGeneral = 1:length(main.file_list)
                                                   profile.rCon,
                                                   profile.sigma, ...
                                                   profile.theta, ...
-                                                  log_bin.timestamps, ...
-                                                  log_bin.normalized_xy_mean, ...
+                                                  fitting_times, ...
+                                                  fitting_intensities, ...
                                                   options.Df);
 
   ### Fitting full model
@@ -243,8 +258,8 @@ for iGeneral = 1:length(main.file_list)
   full_model_2.koff ...
   full_model_2.grid ...
                       ] = fitter_FullModel_2parameters (...
-                                                        log_bin.timestamps, ...
-                                                        log_bin.normalized_xy_mean, ...
+                                                        fitting_times, ...
+                                                        fitting_intensities, ...
                                                         FullModel_preProcess);
 
   ## Fitting with 3 parameters (kon, koff and Df)
@@ -254,8 +269,8 @@ for iGeneral = 1:length(main.file_list)
   full_model_3.koff ...
   full_model_3.Df ...
                           ] = fitter_FullModel_3parameters (...
-                                                            log_bin.timestamps, ...
-                                                            log_bin.normalized_xy_mean, ...
+                                                            fitting_times, ...
+                                                            fitting_intensities, ...
                                                             FullModel_preProcess, ...
                                                             full_model_2.kon, ...
                                                             full_model_2.koff, ...
@@ -295,25 +310,25 @@ for iGeneral = 1:length(main.file_list)
   axis ([0 (profile.distances(end)) 0 1.2])
 
   subplot(2, 3, 4)
-  plot (log_bin.timestamps, [log_bin.normalized_xy_mean; pure_diffusion.yFitted'])
+  plot (fitting_times, [fitting_intensities; pure_diffusion.yFitted'])
   title("Fitting for Pure Diffusion")
   text (20,0.5, ["Df = ", num2str(pure_diffusion.Df)])
-  axis ([0 image.timestamps(end) 0.2 1])
+  axis ([0 fitting_times(end) 0.2 1])
 
   subplot(2, 3, 5)
-  plot (log_bin.timestamps, [log_bin.normalized_xy_mean; full_model_2.yFitted'])
+  plot (log_bin.timestamps, [fitting_intensities; full_model_2.yFitted'])
   title("Fitting with Full Model (Kon Koff)")
   text (20,0.4, ["Kon = ", num2str(full_model_2.kon)])
   text (20,0.3, ["Koff = ", num2str(full_model_2.koff)])
-  axis ([0 image.timestamps(end) 0.2 1])
+  axis ([0 fitting_times(end) 0.2 1])
 
   subplot(2, 3, 6)
-  plot (log_bin.timestamps, [log_bin.normalized_xy_mean; full_model_3.yFitted'])
+  plot (log_bin.timestamps, [fitting_intensities; full_model_3.yFitted'])
   title("Fitting with Full Model (Kon Koff Df)")
   text (20,0.5, ["Df = ", num2str(full_model_3.Df)])
   text (20,0.4, ["Kon = ", num2str(full_model_3.kon)])
   text (20,0.3, ["Koff = ", num2str(full_model_3.koff)])
-  axis ([0 image.timestamps(end) 0.2 1])
+  axis ([0 fitting_times(end) 0.2 1])
 
   print ([file.dir, filesep, "plots_", file.name, ".png"], "-dpng", "-S1680,1050")
 
