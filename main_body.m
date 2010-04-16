@@ -6,17 +6,45 @@
 close all;
 clear all;
 clc;
-main.script_version = "$Revision-Id$";
+pkg unload all;
+
 pkg load zenity;
 pkg load image;
 pkg load optim; # leasqr belongs to optim package
 addpath ("./functions/");
-
 source ("./files/options");
+
+[pkg_des, pkg_status] = pkg ("describe", "all");
+pkg_store_i = 1;
+for pkg_i = 1:columns(pkg_des)
+  if ( strcmpi(pkg_status{pkg_i}, "loaded") )
+    main.packages{pkg_store_i} = sprintf("%s: %s", pkg_des{pkg_i}.name, pkg_des{pkg_i}.version);
+    pkg_store_i++;
+  endif
+endfor
+
+main.octave_version       = version;
+
+bzr_cmd                   = sprintf("bzr version-info");
+[bzr_status, main.revno]  = system (bzr_cmd);
+
+if (bzr_status != 0)
+  error ("Error when cheking revision number with command '%s'. Exit code was '%g'", brz_cmd, bzr_status)
+endif
+
+
 
 ## Sanity checks
 if (options.nNorm > options.nPre_bleach)
-  error("The number of frames to use for normalization of values (%g) is larger than the number of pre-bleach frames (%g)", nNorm, nPre_bleach);
+  error("The number of frames to use for normalization of values (%g) is larger than the number of pre-bleach frames (%g)", options.nNorm, options.nPre_bleach);
+elseif (options.binning_start < 0 )
+  error ("The number of frames that should be skipped before start binning is lower than zero (%g)", options.binning_start)
+elseif (options.avg_start > options.avg_end)
+  error ("The frame number to start averaging for finding background (%g), is after the frame number to end (%g)", options.avg_start, optons.avg_end)
+elseif (options.pre_start > options.pre_end)
+  error ("The frame number to start averaging for the pre-bleach image (%g), is after the frame number to end (%g)", options.pre_start, optons.pre_end)
+elseif (options.post_start > options.post_end)
+  error ("The frame number to start averaging for the post-bleach image (%g), is after the frame number to end (%g)", options.ost_start, optons.post_end)
 endif
 
 ################################################################################
