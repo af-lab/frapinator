@@ -1,17 +1,20 @@
+## Copyright (C) 2010 Carnë Draug <carandraug+dev@gmail.com>
+##
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program; if not, see <http://www.gnu.org/licenses/>.
+##
+
 function [xy_mean] = calculator_averages(image_here, nFrames, ind)
-
-##Explanation
-#creates a 4 dimensional matrix of the mask by repeating it on the 4th dimension.
-#Then multiplies (element by element) the 4dimensional image with the 4dimensional mask (which is logical).
-#sum of sum creates a 4 dimensional matrix with 1st, 2nd and 3rd dimensions of size 1
-#with each frame (4th dimension) holding the sum of pixels values that are true (==1) in the mask
-#squeeze gets rids of the extra dimensions and everything ens up in in one array.
-#Finally, divides by the number of pixels that are true in the mask to get a by pixel average
-
-# Sanity checks
-#should confirm size of masks is the same as size of image
-
-
 
 ## Calculate average intensity of the thing given an index of one of the frames
   xy_mean = 0;

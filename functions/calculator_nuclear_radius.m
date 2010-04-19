@@ -1,10 +1,20 @@
-function nr = calculator_nuclear_radius(tInt, rCon, sigma, theta, sLim, fLim)
-## Copyright (C) WTF?
+## Copyright (C) 2008-2010 Florian Mueller
+## Copyright (C) 2008-2010 Davide Mazza <shiner80@gmail.com>
+## Copyright (C) 2010 Carnë Draug <carandraug+dev@gmail.com>
 ##
-## Modified for octave and cleanliness by Carnë Draug in 2010
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
 ##
-## Very heavily based in the file I got from Davide Mazza
-## whom I think got it from Florian Muller
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program; if not, see <http://www.gnu.org/licenses/>.
+##
 
 ## usage: [nr] = calculator_nuclear_radius (dis, Int, skip, res)
 ##
@@ -31,6 +41,10 @@ function nr = calculator_nuclear_radius(tInt, rCon, sigma, theta, sLim, fLim)
 ##		'rCon' should be >0
 ##		'sigma' should be > 0
 ##		'theta' should be > 0 and < 1
+
+function nr = calculator_nuclear_radius(tInt, rCon, sigma, theta, sLim, fLim)
+
+
 
   if (rCon < 0)
     error ("The paremeter 'rCon' needs to be larger than '0' (zero) but is currently '%g'", rCon);

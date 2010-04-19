@@ -1,9 +1,21 @@
-function [rCon sigma theta yFit stdresid Z q] = fitter_radial_profile(pf_distances, pf_values, nSkip, res)
-## Modified for octave and cleanliness by Carnë Draug in 2010
+## Copyright (C) 2008-2010 Florian Mueller
+## Copyright (C) 2008-2010 Davide Mazza <shiner80@gmail.com>
+## Copyright (C) 2010 Carnë Draug <carandraug+dev@gmail.com>
 ##
-## Very heavily based in the file I got from Davide Mazza
-## whom I think got it from Florian Muller
+## This program is free software; you can redistribute it and/or modify
+## it under the terms of the GNU General Public License as published by
+## the Free Software Foundation; either version 3 of the License, or
+## (at your option) any later version.
+##
+## This program is distributed in the hope that it will be useful,
+## but WITHOUT ANY WARRANTY; without even the implied warranty of
+## MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+## GNU General Public License for more details.
+##
+## You should have received a copy of the GNU General Public License
+## along with this program; if not, see <http://www.gnu.org/licenses/>.
 
+##
 ## usage: [rCon, sigma, theta, fInt, stdrsd, Z, q] = fitter_radial_profile (dis, Int, skip, res)
 ##
 ## Fits bleach spot radial intensity data (Int) along the distance (dis),
@@ -65,6 +77,8 @@ function [rCon sigma theta yFit stdresid Z q] = fitter_radial_profile(pf_distanc
 ## Important notes:
 ##		'Int' must be normalized from '0' (total bleach), to '1' (unbleached).
 ##
+
+function [rCon sigma theta yFit stdresid Z q] = fitter_radial_profile(pf_distances, pf_values, nSkip, res)
 
   ## Create the vectors with the x (distance) and y (intensity) values
   # If it skips 1 point, then, the indice is 2, hence nSkip +1
