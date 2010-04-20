@@ -153,6 +153,6 @@ for iGeneral = 1:length(main.file_list)
   print ([file.dir, filesep, "plots_", file.name, ".png"], "-dpng", "-S1680,1050")
 
 
-  clear -exclusive options main paths
+  clear -exclusive options main paths;
 
 endfor

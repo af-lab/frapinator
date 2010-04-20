@@ -58,15 +58,15 @@ endif
 ##Check if nucleus found is correct and skip this image if it is not
 if (numel(nucleus.index) == 0)
   printf ("Didn't found nucleus in '%s'. Maybe threshold value set too high?", file.path);
-  clear -exclusive options main;
+  clear -exclusive options main paths;
   continue
 elseif (numel(bleach.index) > numel(nucleus.index))
   printf ("Skipped analysis of '%s' because found cell region '%g'[px] smaller than bleach spot '%g'[px].", file.path, numel(nucleus.index), numel(bleach.index));
-  clear -exclusive options main;
+  clear -exclusive options main paths;
   continue
 elseif (numel(nucleus.index) == (image.height * image.width))
   printf ("Nucleus found in '%s' the size of the whole frame '%g'[px]. Maybe threshold value set to low?", file.path, numel(nucleus.index));
-  clear -exclusive options main;
+  clear -exclusive options main paths;
   continue
 endif
 

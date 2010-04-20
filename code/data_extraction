@@ -22,16 +22,25 @@ image.here = squeeze (image.here);
 
 if (ndims(image.here) != 3)
   error ("Image from file '%s' has not 3 dimensions. It has %g dimensions. Skipping file", file.path, ndims(image.here));
-  clear -exclusive options main;
+  clear -exclusive options main paths;
   continue
 endif
 
 ##Stores info from image
-image.height	= rows(image.here);
-image.width		= columns(image.here);
+image.height  = rows(image.here);
+image.width   = columns(image.here);
 
 ## Calculate timestamps
-image.timestamps	= linspace(0, options.tScan*(options.nFrames-1), options.nFrames);
+if (options.flag_timestamps == 0)
+  image.timestamps  = linspace (0, options.tScan*(options.nFrames-1), options.nFrames);
+elseif (options.flag_timestamps == 1)
+  image.timestamps  = read_lsm (file.path);
+  if (length(image.timestamps) != options.nFrames)
+    error ("Number of timestamps found '%g' is different than number of frames '%g'.", length(image.timestamps), options.nFrames)
+  endif
+else
+  error("Non supported value for flag timestamps. Flag was set to %g", options.flag_timestamps)
+endif
 
 ## Creates useful slices of the image
 image.slice_avg   = uint8( mean(image.here(:,:,options.avg_start:options.avg_end),3));

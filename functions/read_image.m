@@ -14,7 +14,7 @@
 ## along with this program; if not, see <http://www.gnu.org/licenses/>.
 ##
 
-function image = read_image(file)
+function image = read_image(file, extension, nFrames)
 
   if (strcmpi(extension,".tif") || strcmpi(extension,".tiff"))
     image = imread(file, 1:nFrames);
