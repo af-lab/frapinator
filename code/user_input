@@ -14,14 +14,17 @@
 ## along with this program; if not, see <http://www.gnu.org/licenses/>.
 
 ## Get file list of files from user
+been_here = 0;
 do
-  current_files = zenity_file_selection("title", "Choose files to analyze", 'multiple');
-  if(!isfield (main, "file_list") && !isempty(current_files{1}))
+  [current_files, exit_code] = zenity_file_selection("title", "Choose files to analyze", 'multiple');
+  if (!been_here && exit_code == 0)
     main.file_list = current_files;
-  elseif(!isempty(current_files{1}))
+  elseif (been_here && exit_code == 0)
     main.file_list = vertcat(main.file_list, current_files);
   endif
-until (isempty(current_files{1}))
+  been_here = 1;
+until (exit_code != 0)
+clear been_here;
 
 if (!isfield (main, "file_list"))
   error ("No file was selected")
