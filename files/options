@@ -2,11 +2,11 @@
 options.flag_threshold  = 1;      # 0 = automatic threshold using Otsu's method; 1 = manually set threshold in threshold_value
 options.flag_correct    = 1;      # Photobleach correction. 0 = infinite nucleus (no fluorescence loss); 1 = finite nucleus (fluorescence loss)
 options.flag_log_image  = 1;      # 0 = no log image is saved; 1 = log image with important frames and masks is saved
-options.flag_fit_data   = 2;      # Data used for fitting. 1 = logaritmic binned; 2 = data from processed images
-options.flag_timestamps = 0;      # 0 = uses options.tScan to calculate timestamps; 1= reads timestamps from image file
+options.flag_fit_data   = 1;      # Data used for fitting. 1 = logaritmic binned; 2 = data from processed images
+options.flag_timestamps = 1;      # 0 = uses options.tScan to calculate timestamps; 1= reads timestamps from image file
 
 ## Set variables for image processing
-options.nFrames         = 2500;   # Number of total frames in the image (should be replaced later for length(imfinfo(file_path))
+options.nFrames         = 2000;   # Number of total frames in the image (should be replaced later for length(imfinfo(file_path))
 options.nPre_bleach     = 100;    # Number of prebleach frames
 options.tScan           = 0.033;  # Scan time for one frame [s]
 options.bleach_diameter = 40;     # Diameter of bleached area [px]

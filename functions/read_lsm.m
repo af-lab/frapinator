@@ -155,7 +155,7 @@
 function [timestamps, time_interval] = read_lsm (file)
 
   [FID, msg] = fopen (file, "r", "native");
-  if (FID == -1)
+  if (FID != 0)
     error ("Unable to fopen '%s': %s.", file, msg);
   endif
 

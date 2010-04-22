@@ -1,0 +1,285 @@
+// "Find bleach spots"
+
+// Global variables...
+	//... to set manually
+	var macro_version = "1.00.00";
+	var show_graph = 0;//0 does nothing; 1 shows Z-axis profile
+	var where_to_numbers = 1;//0 do nothing; 1 prints data to log file; 2 shows in log window
+//coming from functions	
+	var image_ID, image_width, image_height, number_slices, bit_depth;
+	var control_slices, unbleached_frame, radius, search_manual, background_width, background_height;
+	var bleached_ID, subtr_image_ID;
+	var bleach_search_xcoord, bleach_search_ycoord, bleach_search_width, bleach_search_height;
+	var gold_ix, gold_iy;
+	var background_xcoord, background_ycoord, background_width, background_height;
+	var ID_to_close;
+	var lower_thres, upper_thres;
+
+
+// "FindBleachSpot v2" by Davide mazza and David Pinto
+//
+// Finds the bleach spot (circular only) given the radius of the spot and the number of pre-bleach images
+
+macro "Find Bleach Spot in selected image" {
+	mode = "single";
+	dialog_box();
+	if (search_manual == false){setBatchMode(true);}
+	image_data();
+	subtraction();
+	
+	if (search_manual == true){ask_for_selection("bleach");}
+	//close the bleached frame image (no longer needed)
+	clean_yourself(bleached_ID);
+	find_spot();
+	if (search_manual == true){
+		ask_for_selection("background");
+	} else {
+		find_background();
+	}
+	make_numbers();
+	//just to warn that macro has ended
+	beep();
+}
+
+
+// "FindBleachSpot final" by Davide mazza and David Pinto
+//
+// Finds the bleach spot (circular only) given the radius of the spot and the number of pre-bleach images
+// can be applied to a directory
+
+
+macro "Find Bleach Spot final in all files of a directory" {
+	mode = "bunch";
+
+	//asks directory and runs in EVERY file inside that dircetory
+	//regexp later to apply to lsm files only
+	//regexp later defined by user
+	dir = getDirectory("Choose a directory");
+	file_list = getFileList(dir);
+	dialog_box();
+	if (search_manual == false){setBatchMode(true);}
+	//lop to go through all files
+	for (i=0; i<file_list.length; i++) {
+		file_path = dir+file_list[i];
+		if (File.isDirectory(file_path)) {
+			//do nothing, it's a directory. This macro does not search recursively
+			//this is here, to support recursive search in the future
+			//to do so, turn this for in a function and calling it again here with ""+dir+list[i]" as argument
+		} else {
+			open(file_path);
+			wait(40);
+			showStatus("Looking at image "+(i+1)+" of "+file_list.length); //this total value does not takes into account files that are not images (inclusive directories)
+			showProgress((1/file_list.length)*i);
+			image_data();
+			subtraction();
+			if (search_manual == true){ask_for_selection("bleach");}
+			//close the bleached frame image (no longer needed)
+			clean_yourself(bleached_ID);
+			find_spot();
+			if (search_manual == true){
+				ask_for_selection("background");
+			} else {
+				find_background();
+			}
+			make_numbers();
+		}
+	}
+	beep();
+	showStatus("All done, Captain! Now, bring me the camel please.");
+	showProgress(1);
+}
+
+//------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------
+//------------------------------------------------------------------------------------------------------------
+//Functions start here
+
+//sets dialog box depending on the mode being used
+function dialog_box (){
+		Dialog.create("Indicate Bleach frame");
+		Dialog.addNumber("Number of control images", 500);
+		Dialog.addNumber("Number of pre-bleach frames", 100);
+		Dialog.addNumber("Radius [px] of ROI", 25);
+		Dialog.addCheckbox("Search for bleach spot in selected area",false);
+		Dialog.addNumber("Width [px] of the box for background", 30);
+		Dialog.addNumber("Height [px] of the box for background", 30);
+		Dialog.addMessage("NOTE: search in selected area requires input from user for every image");
+		Dialog.show();
+		control_slices =  Dialog.getNumber();
+		unbleached_frame = Dialog.getNumber() + control_slices;
+		radius= Dialog.getNumber();
+		search_manual = Dialog.getCheckbox();
+		background_width = Dialog.getNumber();
+		background_height = Dialog.getNumber();
+}
+
+//opens the image and gets a bunch of information from it
+function image_data (){
+	image_ID = getImageID();
+	image_width = getWidth();
+	image_height = getHeight();
+	number_slices = nSlices();
+	if (control_slices != number_slices/2) {exit("Number of control images is different than number of FRAP images");}
+	bit_depth = bitDepth();
+	if (mode == "single") {getThreshold(lower_thres, upper_thres);}
+}
+
+//subtracts the bleached image to the unbleached image
+function subtraction (){
+	selectImage(image_ID);
+	setSlice(unbleached_frame + 1);
+	if (search_manual == true){place_next(image_ID, 0);}
+
+	//create new image with right size and copies bleached frame to it
+	newImage("bleached", bit_depth, image_width, image_height, 1);
+	bleached_ID = getImageID();
+	imageCalculator("copy", bleached_ID, image_ID);
+	if (search_manual == true){
+		setAutoThreshold();
+		place_next(image_ID, bleached_ID);
+	}
+
+	//go to unbleached frame in original image
+	selectImage(image_ID);
+	setSlice(unbleached_frame);
+	if (search_manual == true){setAutoThreshold();}
+
+	//subtract bleached to prebleached image (prebleach - bleach) to new image
+	imageCalculator("subtract create", image_ID, bleached_ID);
+	subtr_image_ID = getImageID();
+	if (search_manual == true){
+		setAutoThreshold();
+		place_next(bleached_ID, subtr_image_ID);
+	}
+}
+
+//asks for selection and gets its coordinates
+function ask_for_selection (select_what){
+	if (select_what == "bleach"){
+		waitForUser("Please select an area to search for the bleach spot and then press OK");
+		getSelectionBounds(bleach_search_xcoord, bleach_search_ycoord, bleach_search_width, bleach_search_height);
+	} else if (select_what == "background"){
+		waitForUser("Please make a rectangular selection to measure the background and then press OK. If not rectangular,\ncoordinatesgiven will be for the smallest rectangle that can completely contain the selection");
+		getSelectionBounds(background_xcoord, background_ycoord, background_width, background_height);
+	}	
+}
+
+//check if look in selection or total image and define start and final coordinates
+//iterate through the area looking for the ROI with higher intensity mean
+//if the maximum mean intensity is possible in more than one ROI, select the last evaluated
+//defines the coordinates for the circle center
+function find_spot (){
+	if(search_manual == true) {
+		start_xcoord = bleach_search_xcoord;
+		start_ycoord = bleach_search_ycoord;
+		final_xcoord = bleach_search_xcoord + bleach_search_width - (radius*2);
+		final_ycoord = bleach_search_ycoord + bleach_search_height - (radius*2);
+	} else {
+		start_xcoord = 0;
+		start_ycoord = 0;
+		final_xcoord = image_width - (radius*2);
+		final_ycoord = image_height - (radius*2);
+	}
+	selectImage(subtr_image_ID);
+	max_mean = 0;
+	for (ix = start_xcoord; ix <= final_xcoord; ix++) {
+		for (iy = start_ycoord; iy <= final_ycoord; iy++) {
+			makeOval(ix, iy, radius*2, radius*2);
+			getStatistics(area, mean);
+			if (mean >= max_mean) {
+				max_mean = mean;
+				gold_ix = ix;
+				gold_iy = iy;
+			}
+		}
+	}
+	//close subtraction, no longer needed
+	clean_yourself(subtr_image_ID);
+}
+
+function find_background() {
+	min_mean = pow(2, bit_depth); // sets to maximum possible value for image bit depth 2^(bit depth)
+	for (ix = 0; ix <= image_width-background_width; ix++) {
+		for (iy = 0; iy <= image_height-background_height; iy++) {
+			makeRectangle(ix, iy, background_width, background_height);
+			getStatistics(area, mean);
+			if (mean <= min_mean) {
+				min_mean = mean;
+				background_xcoord = ix;
+				background_ycoord = iy;
+			}
+		}
+	}
+}
+
+//make make make make make make the numbers yeaaahhhhhh!!!!!
+function make_numbers () {
+	if (search_manual == true){setBatchMode(true);}
+	selectImage(image_ID);
+	save_to = getDirectory("image")+File.separator+getTitle()+".txt";
+	if (File.exists(save_to)){
+		exit("File "+save_to+" already exists. Macro abortion");
+	}
+	if (File.isDirectory(save_to)){
+		exit("You're unfortunate enough that the file already exists as a directory. Macro abortion");
+	}
+	file_handle = File.open(save_to);
+	print (file_handle, "### file created with macro version "+macro_version);
+	if (search_manual == true){
+		print (file_handle, "### user defined areas were used for background and search of bleach spot coordinates");
+	} else {
+		print (file_handle, "### coordinates automatically searched by macro");
+	}
+	print (file_handle, "### 1st column is FRAP average intensities with makeOval("+gold_ix+", "+gold_iy+", "+radius*2+", "+radius*2+")");
+	print (file_handle, "### 2nd column is control average intensities with makeOval("+gold_ix+", "+gold_iy+", "+radius*2+", "+radius*2+")");
+	print (file_handle, "### 3rd column is background average intensities with makeRectangle("+background_xcoord+", "+background_ycoord+", "+background_width+", "+background_height+")");
+	makeOval(gold_ix, gold_iy, radius*2, radius*2);
+	control_array = newArray(control_slices);
+	for (i = 1 ; i <= control_slices; i++){
+		selectImage(image_ID);
+		setSlice(i);
+		getStatistics(area, mean);
+		control_array[i-1] = mean;
+	}
+	frap_array = newArray(control_slices); //number of control slices should be same as number of frap slices
+	for (i = control_slices+1 ; i <= number_slices; i++){
+		selectImage(image_ID);
+		setSlice(i);
+		getStatistics(area, mean);
+		frap_array[i-control_slices-1] = mean;
+	}
+	setSlice(1);
+	makeRectangle(background_xcoord, background_ycoord, background_width, background_height);
+	background_array = newArray(control_slices); //number of control slices should be same as number of control slices
+	for (i = control_slices+1 ; i <= number_slices; i++){
+		selectImage(image_ID);
+		setSlice(i);
+		getStatistics(area, mean);
+		background_array[i-control_slices-1] = mean;
+	}
+	for (i = 0; i <= control_slices-1; i++){
+		print (file_handle, d2s(frap_array[i], 6)+" "+d2s(control_array[i], 6)+" "+d2s(background_array[i], 6));
+	}
+	File.close(file_handle);
+	if (mode == "bunch") {clean_yourself(image_ID);}
+	if (mode == "single") {setThreshold(lower_thres, upper_thres);}
+	if (search_manual == true){setBatchMode(false);}
+}
+
+
+function clean_yourself(ID_to_close) {
+	selectImage(ID_to_close);
+	close();
+}
+
+//set right_ID to 0 (zero) to place left_ID to the left of screen
+function place_next(left_ID, right_ID) {
+	selectImage(left_ID);
+	getLocationAndSize(window_x, window_y, window_width, window_height);
+	if (right_ID == 0){
+		setLocation(1, window_y);
+	} else {
+	selectImage(right_ID);
+	setLocation(window_x + window_width, window_y);
+	}
+}
