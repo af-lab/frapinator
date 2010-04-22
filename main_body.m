@@ -21,6 +21,8 @@
 close all;
 clear all;
 clc;
+more off;
+page_output_immediately (1);
 pkg unload all;
 
 pkg load zenity;
