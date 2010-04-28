@@ -79,6 +79,9 @@ endif
 
 source ([paths.code, "user_input"]);
 
+paths.bar_handle = zenity_progress("title", "FRAPINATOR", ...
+                                    "auto close", ...
+                                    "width", 400);
 ######################## Start of the big loop #################################
 for iGeneral = 1:length(main.file_list)
 
@@ -92,17 +95,29 @@ for iGeneral = 1:length(main.file_list)
   disp (message)
 
   try
+    z_message = sprintf("Image %d of %d, processing", iGeneral, numel(main.file_list));
+    zenity_progress(paths.bar_handle, ...
+                    "text", z_message,
+                    "percentage",  ((iGeneral-1)/numel(main.file_list))*100 );
+
     ## Read image, times and creates slices
     source([paths.code, "data_extraction"]);
     ## Finds ROIs, calculate averages, make corrections to data and calculate profile
     source([paths.code, "image_processing"]);
     ## Get rid of the image
     image = rmfield (image, "here");
+
+    z_message = sprintf("Image %d of %d, fitting", iGeneral, numel(main.file_list));
+    zenity_progress(paths.bar_handle, ...
+                    "text", z_message,
+                    "percentage",  ((iGeneral-0.5)/numel(main.file_list))*100 );
+
+
     ## Do all the fitting
     source([paths.code, "data_fitting"]);
   catch
     msg     = lasterror.message;
-    message = sprintf("Error: %s \n Skipping image %s" msg, file.path);
+    message = sprintf("Error: %s \n Skipping image %s", msg, file.path);
     disp (message)
     clear -exclusive options main paths;
     continue
@@ -169,3 +184,4 @@ for iGeneral = 1:length(main.file_list)
   clear -exclusive options main paths;
 
 endfor
+zenity_progress(paths.bar_handle, "close");
