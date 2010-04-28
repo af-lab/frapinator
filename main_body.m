@@ -82,7 +82,11 @@ source ([paths.code, "user_input"]);
 ######################## Start of the big loop #################################
 for iGeneral = 1:length(main.file_list)
 
+  file.path                             = main.file_list{iGeneral};
+  [file.dir, file.name, file.extension] = fileparts(file.path);
 
+  message = sprintf("Starting image %g", file.path);
+  disp (message)
   source([paths.code, "data_extraction"]);
 
   ################################################################################
@@ -154,7 +158,8 @@ for iGeneral = 1:length(main.file_list)
 
   print ([file.dir, filesep, "plots_", file.name, ".png"], "-dpng", "-S1680,1050")
 
-
+  message = sprintf("Finished image %g", file.path);
+  disp (message)
   clear -exclusive options main paths;
 
 endfor
