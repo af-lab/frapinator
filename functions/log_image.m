@@ -14,7 +14,7 @@
 ## along with this program; if not, see <http://www.gnu.org/licenses/>.
 ##
 
-function log_image (avg, pre, post, bleach, bd_bkg, bd_bl, bd_nc, filedir, filename);
+function log_image (avg, pre, post, bleach, bd_bkg, bd_bl, bd_nc, filepath);
 
   ##sanity checks
   #should check if slicesd and masks are all the same size
@@ -51,6 +51,6 @@ function log_image (avg, pre, post, bleach, bd_bkg, bd_bl, bd_nc, filedir, filen
   #Adjust the image brightness
   canvas = canvas * (intmax("uint8")/white);
   # Creates and saves log image
-  imwrite (canvas, [filedir, filesep, "masks_", filename, ".tif"]);
+  imwrite (canvas, filepath);
 
 endfunction

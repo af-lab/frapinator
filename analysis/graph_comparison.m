@@ -310,6 +310,7 @@ endfunction
 ## 4 - Full model (kon and koff)
 ## 5 - Full model (Df, kon and koff)
 ## 6 - Scatterplots (Kon, Koff)
+## 7 - Kon Koff best guesses
 
 comparison    = comparison_selector();
 [nRow, nCol]  = pick_graph_number();

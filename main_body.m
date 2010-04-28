@@ -84,26 +84,32 @@ for iGeneral = 1:length(main.file_list)
 
   file.path                             = main.file_list{iGeneral};
   [file.dir, file.name, file.extension] = fileparts(file.path);
+  file.log_path                         = [file.dir, filesep, "masks_", file.name, ".tif"];
+  file.extracted_path                   = [file.dir, filesep, "extracted_data_", file.name, ".txt"];
+  file.plots_path                       = [file.dir, filesep, "plots_", file.name, ".png"];
 
   message = sprintf("Starting image %s", file.path);
   disp (message)
-  source([paths.code, "data_extraction"]);
 
-  ################################################################################
-  ########################### Start image processing #############################
-
-  source([paths.code, "image_processing"]);
-
-  image = rmfield (image, "here");
-
-  ################################################################################
-  ################################ Start fitting #################################
-
-  source([paths.code, "data_fitting"]);
-
+  try
+    ## Read image, times and creates slices
+    source([paths.code, "data_extraction"]);
+    ## Finds ROIs, calculate averages, make corrections to data and calculate profile
+    source([paths.code, "image_processing"]);
+    ## Get rid of the image
+    image = rmfield (image, "here");
+    ## Do all the fitting
+    source([paths.code, "data_fitting"]);
+  catch
+    msg     = lasterror.message;
+    message = sprintf("Error: %s \n Skipping image %s" msg, file.path);
+    disp (message)
+    clear -exclusive options main paths;
+    continue
+  end_try_catch
 
   # Save processed data (list of variables to save)
-  save ("-text", [file.dir, filesep, "extracted_data_", file.name, ".txt"],
+  save ("-text", file.extracted_path,
     "main", ...
     "options", ...
     "image", ...
@@ -156,7 +162,7 @@ for iGeneral = 1:length(main.file_list)
   text (20,0.3, ["Koff = ", num2str(full_model_3.koff)])
   axis ([0 fitting_times(end) 0.2 1])
 
-  print ([file.dir, filesep, "plots_", file.name, ".png"], "-dpng", "-S1680,1050")
+  print (file.plots_path, "-dpng", "-S1680,1050")
 
   message = sprintf("Finished image %s", file.path);
   disp (message)
