@@ -56,10 +56,11 @@ cur_dir         = pwd;
 paths.functions = [cur_dir, filesep, "functions", filesep];
 paths.code      = [cur_dir, filesep, "code", filesep];
 paths.files     = [cur_dir, filesep, "files", filesep];
+paths.options   = [cur_dir, filesep, "options", filesep];
 addpath (paths.functions);
 
 ## Load user options
-source ([paths.files, "options"]);
+source ([paths.options, "options"]);
 
 ## Sanity checks
 if (options.nNorm > options.nPre_bleach)

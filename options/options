@@ -4,6 +4,7 @@ options.flag_correct    = 1;      # Photobleach correction. 0 = infinite nucleus
 options.flag_log_image  = 1;      # 0 = no log image is saved; 1 = log image with important frames and masks is saved
 options.flag_fit_data   = 1;      # Data used for fitting. 1 = logaritmic binned; 2 = data from processed images
 options.flag_timestamps = 1;      # 0 = uses options.tScan to calculate timestamps; 1= reads timestamps from image file
+options.flag_frames     = 1;      # 0 = uses the user defined nFrames; 1 = uses extracted number of frames as nFrames;
 
 ## Set variables for image processing
 options.nFrames         = 2000;   # Number of total frames in the image (should be replaced later for length(imfinfo(file_path))

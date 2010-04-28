@@ -13,6 +13,23 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program; if not, see <http://www.gnu.org/licenses/>.
 
+## Calculate timestamps
+if (options.flag_timestamps == 0)
+  image.timestamps  = linspace (0, options.tScan*(options.nFrames-1), options.nFrames);
+elseif (options.flag_timestamps == 1)
+  image.timestamps  = read_lsm (file.path);
+  if (options.flag_frames)
+    options.nFrames = numel(image.timestamps);
+  else
+    if (numel(image.timestamps) < options.nFrames)
+      error ("Number of timestamps found '%g' was larger than the defined number of frames '%g'.", numel(image.timestamps), options.nFrames)
+    endif
+    options.timestamps = options.timestamps(1:options.nFrames);
+  endif
+else
+  error("Non supported value for flag timestamps. Flag was set to %g", options.flag_timestamps)
+endif
+
 ## Open the image
 image.here = read_image(file.path, file.extension, options.nFrames);
 image.here = squeeze (image.here);
@@ -26,18 +43,6 @@ endif
 ##Stores info from image
 image.height  = rows(image.here);
 image.width   = columns(image.here);
-
-## Calculate timestamps
-if (options.flag_timestamps == 0)
-  image.timestamps  = linspace (0, options.tScan*(options.nFrames-1), options.nFrames);
-elseif (options.flag_timestamps == 1)
-  image.timestamps  = read_lsm (file.path);
-  if (length(image.timestamps) != options.nFrames)
-    error ("Number of timestamps found '%g' is different than number of frames '%g'.", length(image.timestamps), options.nFrames)
-  endif
-else
-  error("Non supported value for flag timestamps. Flag was set to %g", options.flag_timestamps)
-endif
 
 ## Creates useful slices of the image
 image.slice_avg   = uint8( mean(image.here(:,:,options.avg_start:options.avg_end),3));
