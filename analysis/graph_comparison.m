@@ -47,7 +47,8 @@ function option = comparison_selector()
   choices = {"true" , "1", "all time points",
              "false", "2", "limit by data points",
              "false", "3", "limit by seconds",
-             "false", "4", "compare models"};
+             "false", "4", "compare models"
+             "false", "5", "scatterplot of Kon vs Koff"};
   do
     [option, ex_sta] = zenity_list(cols, choices,
                                    "text", "Select the type of comparison to be made",
@@ -154,6 +155,8 @@ function data = data_reader (files, model)
   ## 3 - Pure diffusion
   ## 4 - Full model (kon and koff)
   ## 5 - Full model (Df, kon and koff)
+  ## 6 - Scatterplot (Kon and Koff)
+
 
   for i = 1:numel(files)
     load ("-text", files{i});
@@ -193,6 +196,13 @@ function data = data_reader (files, model)
         data(i).FM3_kon     = full_model_3.kon;
         data(i).FM3_koff    = full_model_3.koff;
 
+      case 6
+        data(i).FM2_kon     = full_model_2.kon;
+        data(i).FM2_koff    = full_model_2.koff;
+        data(i).FM3_Df      = full_model_3.Df;
+        data(i).FM3_kon     = full_model_3.kon;
+        data(i).FM3_koff    = full_model_3.koff;
+
       otherwise
         error("Unknown model value '%g'", model)
     endswitch
@@ -208,6 +218,7 @@ function data = data_show (data, model);
   ## 3 - Pure diffusion
   ## 4 - Full model (kon and koff)
   ## 5 - Full model (Df, kon and koff)
+  ## 6 - Scatterplot (Kon and Koff)
 
   switch model
     case 3
@@ -284,6 +295,19 @@ function graph_maker (data, model, top, interval)
         plot (data(i).bin_times(start:min(final,end)), data(i).FM3_fit(start:min(final,end)), "color", colors{iColor});
         hold on;
         axis ([0 data(i).bin_times(min(final,end)) 0.4 0.9])
+      case 5
+        plot (data(i).bin_times(start:min(final,end)), data(i).FM3_fit(start:min(final,end)), "color", colors{iColor});
+        hold on;
+        axis ([0 data(i).bin_times(min(final,end)) 0.4 0.9])
+      case 6
+        plot(data(i).FM3_kon, data(i).FM3_koff, ...
+              "MarkerSize", 10, ...
+              "color", colors{iColor}, ...
+              "marker", "o", ...
+              "LineStyle", "none");
+        hold on;
+        xlabel("Kon");
+        ylabel("Koff");
       otherwise
         error("Unknown model for graph_maker %g", model)
     endswitch
@@ -302,6 +326,8 @@ endfunction
 ## 2 - limit by points
 ## 3 - limit by seconds
 ## 4 - compare models
+## 5 - Scatterplots (Kon, Koff)
+## 7 - Kon Koff best guesses
 ##
 ## Models:
 ## 1 - Raw data
@@ -309,8 +335,7 @@ endfunction
 ## 3 - Pure diffusion
 ## 4 - Full model (kon and koff)
 ## 5 - Full model (Df, kon and koff)
-## 6 - Scatterplots (Kon, Koff)
-## 7 - Kon Koff best guesses
+## 6 - Scatterplot
 
 comparison    = comparison_selector();
 [nRow, nCol]  = pick_graph_number();
@@ -319,43 +344,58 @@ if (comparison == 2 || comparison == 3)
   interval = pick_interval (comparison);
 endif
 
-if (comparison != 4)
-  model         = pick_model();
+switch comparison
+  case { 1, 2, 3 }                                        # Frap recoveries
+    model         = pick_model();
 
-  for iGraph = 1:(nRow*nCol)
-    graph.title = pick_title(iGraph);
-    graph.files = pick_files();
-    graph.data  = data_reader (graph.files, model);
-    if (model != 1)
-      graph.data  = data_show (graph.data, model);
-    endif
+    for iGraph = 1:(nRow*nCol)
+      graph.title = pick_title(iGraph);
+      graph.files = pick_files();
+      graph.data  = data_reader (graph.files, model);
+      if (model != 1)
+        graph.data  = data_show (graph.data, model);
+      endif
 
-    switch comparison
-      case 2
-        # Do nothing, it's good
-      case 3
-        #Calculate times
-      otherwise
-        interval = [0, 0];
-    endswitch
-    subplot(nRow, nCol, iGraph)
-    graph_maker (graph.data, model, graph.title, interval);
-    clear graph;
-  endfor
+      switch comparison
+        case 2
+          # Do nothing, it's good
+        case 3
+          # Calculate times or maybe this should happen in graph_maker
+        otherwise
+          interval = [0, 0];
+      endswitch
+      subplot(nRow, nCol, iGraph)
+      graph_maker (graph.data, model, graph.title, interval);
+      clear graph;
+    endfor
 
-elseif (comparison == 4)
-  comp.files = pick_files();
-  for iGraph = 1:(nRow*nCol)
-    model       = pick_model();
-    graph.title = pick_title(iGraph);
-    graph.data  = data_reader (graph.files, model);
+  case { 4 }                                              # Compare models (frap recoveries)
+    comp.files = pick_files();
+    for iGraph = 1:(nRow*nCol)
+      model       = pick_model();
+      graph.title = pick_title(iGraph);
+      graph.data  = data_reader (graph.files, model);
+      subplot(nRow, nCol, iGraph)
+      graph_maker (graph.data, model, graph.title);
+      clear graph;
+    endfor
 
-    subplot(nRow, nCol, iGraph)
-    graph_maker (graph.data, model, graph.title);
+  case { 5 }                                              # Scatterplots
+    model = 6;
+    for iGraph = 1:(nRow*nCol)
+      graph.title = pick_title(iGraph);
+      graph.files = pick_files();
+      graph.data  = data_reader (graph.files, model);
+#      graph.data  = data_show (graph.data, model);
+      interval = [0, 0];
+      subplot(nRow, nCol, iGraph)
+      graph_maker (graph.data, model, graph.title, interval);
+      clear graph;
+    endfor
 
-    clear graph;
-  endfor
-endif
+  otherwise
+    error("Unrecognized comparison type %i.", comparison);
+endswitch
 
 ## Save file?
 to_save = zenity_message ("Save this graph?",
