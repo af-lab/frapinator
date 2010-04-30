@@ -34,7 +34,7 @@ function complain (status, what)
                           "title", "FRAPINATOR analysis",
                           "width", 250,
                           "ok button", "pick again",
-                          "cancel button", "exit program");
+                          "cancel button", "exit");
     if (mes == 1)
       exit
     endif
@@ -48,7 +48,9 @@ function option = comparison_selector()
              "false", "2", "limit by data points",
              "false", "3", "limit by seconds",
              "false", "4", "compare models"
-             "false", "5", "scatterplot of Kon vs Koff"};
+             "false", "5", "scatterplot (change models)"
+             "false", "6", "scatterplot (change files)"
+             "false", "7", "bar plot with standard deviation"};
   do
     [option, ex_sta] = zenity_list(cols, choices,
                                    "text", "Select the type of comparison to be made",
@@ -102,14 +104,28 @@ function Int = pick_interval(comparison)
 
 endfunction
 ################# Pick the model to show
-function model = pick_model();
+function model = pick_model(comparison);
 
   cols    = {"", "secret values", "Data"};
   choices = {"false", "1", "Raw data",
              "false", "2", "Profile",
              "false", "3", "Pure diffusion",
              "false", "4", "Full model (kon and koff)",
-             "false", "5", "Full model (Df, kon and koff)"};
+             "false", "5", "Full model (Df, kon and koff)",
+             "false", "6", "Kon/Koff",
+             "false", "7", "Koff/Df",
+             "false", "8", "Bound/Df",
+             "false", "9", "tr/Df"};
+
+  switch comparison
+    case { 1, 2, 3, 4 }
+      choices = choices(1:5,:);
+    case { 5, 6 }
+      choices = choices(6:9,:);
+    otherwise
+      error("Unknown comparison '%i' to select model", comparison)
+  endswitch
+
   do
     [model, ex_sta] = zenity_list(cols, choices,
                                    "title", "FRAPINATOR analysis",
@@ -149,13 +165,16 @@ function files = pick_files();
 endfunction
 ################# Read data from the text files
 function data = data_reader (files, model)
-  ## Models:
-  ## 1 - Raw data
-  ## 2 - Profile
-  ## 3 - Pure diffusion
-  ## 4 - Full model (kon and koff)
-  ## 5 - Full model (Df, kon and koff)
-  ## 6 - Scatterplot (Kon and Koff)
+## Models:
+## 1 - Raw data
+## 2 - Profile
+## 3 - Pure diffusion
+## 4 - Full model (kon and koff)
+## 5 - Full model (Df, kon and koff)
+## 6 - Scatterplot Kon / Koff
+## 7 - Scatterplot Koff / Df
+## 8 - Scatterplot Bound fraction / Df
+## 9 - Scatterplot residence time / Df
 
 
   for i = 1:numel(files)
@@ -181,44 +200,49 @@ function data = data_reader (files, model)
 
       case 3
         data(i).PD_fit      = pure_diffusion.yFitted;
-        data(i).PD_Df       = pure_diffusion.Df;
+        data(i).PD_Df       = pure_diffusion.Df * 0.01;
 
       case 4
         data(i).FM2_fit     = full_model_2.yFitted;
-        data(i).FM2_Df      = full_model_2.Df;
+        data(i).FM2_Df      = full_model_2.Df * 0.01;
         data(i).FM2_kon     = full_model_2.kon;
         data(i).FM2_koff    = full_model_2.koff;
 #        data(i).FM2_ssr     = full_model_2.grid(1,6);
 
       case 5
         data(i).FM3_fit     = full_model_3.yFitted;
-        data(i).FM3_Df      = full_model_3.Df;
+        data(i).FM3_Df      = full_model_3.Df * 0.01;
         data(i).FM3_kon     = full_model_3.kon;
         data(i).FM3_koff    = full_model_3.koff;
 
-      case 6
+      case { 6, 7, 8, 9}
+        data(i).PD_Df       = pure_diffusion.Df * 0.01;
         data(i).FM2_kon     = full_model_2.kon;
         data(i).FM2_koff    = full_model_2.koff;
         data(i).FM3_Df      = full_model_3.Df;
         data(i).FM3_kon     = full_model_3.kon;
         data(i).FM3_koff    = full_model_3.koff;
+        data(i).bound_frac  = ( data(i).FM3_kon / (data(i).FM3_kon + data(i).FM3_koff) )*100;
+        data(i).resid_time  = (1 / data(i).FM3_koff);
 
       otherwise
         error("Unknown model value '%g'", model)
     endswitch
-#    data(i).bound_frac  = ( data(i).FM3_kon / (data(i).FM3_kon + data(i).FM3_koff) )*100;
     clear -exclusive files data model;
   endfor
 endfunction
 ################# Show the loaded data and remove some
 function data = data_show (data, model);
-  ## Models:
-  ## 1 - Raw data
-  ## 2 - Profile
-  ## 3 - Pure diffusion
-  ## 4 - Full model (kon and koff)
-  ## 5 - Full model (Df, kon and koff)
-  ## 6 - Scatterplot (Kon and Koff)
+## Models:
+## 1 - Raw data
+## 2 - Profile
+## 3 - Pure diffusion
+## 4 - Full model (kon and koff)
+## 5 - Full model (Df, kon and koff)
+## 6 - Scatterplot Kon / Koff
+## 7 - Scatterplot Koff / Df
+## 8 - Scatterplot Bound fraction / Df
+## 9 - Scatterplot residence time / Df
 
   switch model
     case 3
@@ -264,7 +288,9 @@ function data = data_show (data, model);
 
 endfunction
 ################# Make the graphs
-function graph_maker (data, model, top, interval)
+function [xMin, xMax, yMin, yMax] = graph_maker (data, model, top, interval)
+
+  persistent xMin xMax yMin yMax;
 
   if (interval)
     start = interval(1);
@@ -299,15 +325,49 @@ function graph_maker (data, model, top, interval)
         plot (data(i).bin_times(start:min(final,end)), data(i).FM3_fit(start:min(final,end)), "color", colors{iColor});
         hold on;
         axis ([0 data(i).bin_times(min(final,end)) 0.4 0.9])
-      case 6
-        plot(data(i).FM3_kon, data(i).FM3_koff, ...
+      case { 6, 7, 8, 9 }
+        switch model
+          case { 6 }
+            xTag  = "Kon";
+            yTag  = "Koff";
+            xData = data(i).FM3_kon;
+            yData = data(i).FM3_koff;
+          case { 7 }
+            xTag  = "Koff";
+            yTag  = "Df";
+            xData = data(i).FM3_koff;
+            yData = data(i).PD_Df;
+          case { 8 }
+            xTag  = "Bound fraction";
+            yTag  = "Df";
+            xData = data(i).bound_frac;
+            yData = data(i).PD_Df;
+          case { 9 }
+            xTag  = "Residence time";
+            yTag  = "Df";
+            xData = data(i).resid_time;
+            yData = data(i).PD_Df;
+        endswitch
+        if ( isempty(xMin) ) # so do all the others
+          xMin = xData;
+          xMax = xData;
+          yMin = yData;
+          yMax = yData;
+        else
+          if (xMin > xData) xMin = xData; endif
+          if (xMax < xData) xMax = xData; endif
+          if (yMin > yData) yMin = yData; endif
+          if (yMax < yData) yMax = yData; endif
+          endif
+        plot(xData, yData, ...
               "MarkerSize", 10, ...
-              "color", colors{iColor}, ...
+              "color", "red", ...
               "marker", "o", ...
               "LineStyle", "none");
         hold on;
-        xlabel("Kon");
-        ylabel("Koff");
+        xlabel(xTag);
+        ylabel(yTag);
+
       otherwise
         error("Unknown model for graph_maker %g", model)
     endswitch
@@ -326,8 +386,10 @@ endfunction
 ## 2 - limit by points
 ## 3 - limit by seconds
 ## 4 - compare models
-## 5 - Scatterplots (Kon, Koff)
-## 7 - Kon Koff best guesses
+## 5 - Scatterplots (change models)
+## 6 - Scatterplots (change files)
+## 7 - Bar plot with Standard deviation
+## 8 - Kon Koff best guesses
 ##
 ## Models:
 ## 1 - Raw data
@@ -335,18 +397,24 @@ endfunction
 ## 3 - Pure diffusion
 ## 4 - Full model (kon and koff)
 ## 5 - Full model (Df, kon and koff)
-## 6 - Scatterplot
+## 6 - Scatterplot Kon / Koff
+## 7 - Scatterplot Koff / Df
+## 8 - Scatterplot Bound fraction / Df
+## 9 - Scatterplot residence time / Df
+
 
 comparison    = comparison_selector();
-[nRow, nCol]  = pick_graph_number();
-
 if (comparison == 2 || comparison == 3)
   interval = pick_interval (comparison);
+else
+  interval = [0,0];
 endif
+
+[nRow, nCol]  = pick_graph_number();
 
 switch comparison
   case { 1, 2, 3 }                                        # Frap recoveries
-    model         = pick_model();
+    model         = pick_model(comparison);
 
     for iGraph = 1:(nRow*nCol)
       graph.title = pick_title(iGraph);
@@ -357,9 +425,9 @@ switch comparison
       endif
 
       switch comparison
-        case 2
+        case { 2 }
           # Do nothing, it's good
-        case 3
+        case { 3 }
           # Calculate times or maybe this should happen in graph_maker
         otherwise
           interval = [0, 0];
@@ -372,7 +440,7 @@ switch comparison
   case { 4 }                                              # Compare models (frap recoveries)
     comp.files = pick_files();
     for iGraph = 1:(nRow*nCol)
-      model       = pick_model();
+      model       = pick_model(comparison);
       graph.title = pick_title(iGraph);
       graph.data  = data_reader (graph.files, model);
       subplot(nRow, nCol, iGraph)
@@ -380,18 +448,37 @@ switch comparison
       clear graph;
     endfor
 
-  case { 5 }                                              # Scatterplots
-    model = 6;
+  case { 5 }                                              # Scatterplots (change models)
+    files = pick_files();
     for iGraph = 1:(nRow*nCol)
+      graph.model = pick_model(comparison);
       graph.title = pick_title(iGraph);
-      graph.files = pick_files();
-      graph.data  = data_reader (graph.files, model);
+      graph.data  = data_reader (files, graph.model);
 #      graph.data  = data_show (graph.data, model);
-      interval = [0, 0];
       subplot(nRow, nCol, iGraph)
-      graph_maker (graph.data, model, graph.title, interval);
+      graph_maker (graph.data, graph.model, graph.title, interval);
       clear graph;
     endfor
+
+  case { 6 }                                              # Scatterplots (change files)
+    model = pick_model(comparison);
+    for iGraph = 1:(nRow*nCol)
+      graph.files = pick_files();
+      graph.title = pick_title(iGraph);
+      graph.data  = data_reader (graph.files, model);
+#      graph.data  = data_show (graph.data, model);
+      subplot(nRow, nCol, iGraph)
+      [xMin, xMax, yMin, yMax] = graph_maker (graph.data, model, graph.title, interval);
+      clear graph;
+    endfor
+    ## Re-adjust the axis of each plot so they are all on the same scale
+    for iGraph = 1:(nRow*nCol)
+      subplot(nRow, nCol, iGraph)
+      axis([xMin, xMax, yMin, yMax])
+    endfor
+
+  case { 7 }                                              # Bar plot
+
 
   otherwise
     error("Unrecognized comparison type %i.", comparison);
