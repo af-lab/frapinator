@@ -390,6 +390,7 @@ endfunction
 ## 6 - Scatterplots (change files)
 ## 7 - Bar plot with Standard deviation
 ## 8 - Kon Koff best guesses
+## 9 - Specify variables and draw the function
 ##
 ## Models:
 ## 1 - Raw data
@@ -491,7 +492,7 @@ to_save = zenity_message ("Save this graph?",
                           "cancel button", "no",
                           "type", "question");
 if(to_save == 0)
-  save_path = zenity_file_selection ("save", "filter", "*.png");
+  save_path = zenity_file_selection ("save", "filter", "*.png", "filter", "*");
   if ( isempty(regexpi(save_path, "\\.png$")) )
     save_path = sprintf("%s.png", save_path);
   endif
