@@ -70,6 +70,9 @@ function [pf_matrix pf_distances] = calculator_profile (image_here, nFrames, nPr
   endfor
 
   ## Normalize the intensity values
+  # This gets the average radial profile of nNorm pre-bleach frames. It is then used to divide
+  # the post-bleach radial profile and "clean" whatever irregularities there could be there
+  # from the start
   norm_factor   = mean(pf_matrix(:,nPre_bleach-nNorm+1 : nPre_bleach),2);
 
   for iImg = 1:nFrames
