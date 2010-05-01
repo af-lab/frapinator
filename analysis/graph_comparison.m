@@ -47,10 +47,10 @@ function option = comparison_selector()
   choices = {"true" , "1", "all time points",
              "false", "2", "limit by data points",
              "false", "3", "limit by seconds",
-             "false", "4", "compare models"
-             "false", "5", "scatterplot (change models)"
-             "false", "6", "scatterplot (change files)"
-             "false", "7", "bar plot with standard deviation"};
+             "false", "4", "compare models",
+             "false", "5", "scatterplot (change models)",
+             "false", "6", "scatterplot (change files)",
+             "false", "7", "\"bar\" plots for parameters"};
   do
     [option, ex_sta] = zenity_list(cols, choices,
                                    "text", "Select the type of comparison to be made",
@@ -89,7 +89,7 @@ function [nRow, nCol] = pick_graph_number()
   nCol = template(2);
 
 endfunction
-################# Pick the number of graphs to make
+################# Pick interval of the graphs
 function Int = pick_interval(comparison)
 
   do
@@ -103,25 +103,47 @@ function Int = pick_interval(comparison)
   Int = [str2double(interval(1:ind-1)), str2double(interval(ind+1:end))];
 
 endfunction
+
+################# Pick number of bars in the bar plots
+function bars = pick_bar_numel
+
+  do
+    [bars, ex_sta] = zenity_entry("Set the number of \"bars\" in the plot.",
+                                  "title", "FRAPINATOR analysis",
+                                  "width", 250);
+    complain (ex_sta, "a number");
+    [bars, ex_sta] = str2double(bars);
+    complain (ex_sta, "a valid number");
+  until (ex_sta != 1)
+
+endfunction
+
 ################# Pick the model to show
 function model = pick_model(comparison);
 
   cols    = {"", "secret values", "Data"};
-  choices = {"false", "1", "Raw data",
-             "false", "2", "Profile",
-             "false", "3", "Pure diffusion",
-             "false", "4", "Full model (kon and koff)",
-             "false", "5", "Full model (Df, kon and koff)",
-             "false", "6", "Kon/Koff",
-             "false", "7", "Koff/Df",
-             "false", "8", "Bound/Df",
-             "false", "9", "tr/Df"};
+  choices = {"false",  "1", "Raw data",
+             "false",  "2", "Profile",
+             "false",  "3", "Pure diffusion",
+             "false",  "4", "Full model (kon and koff)",
+             "false",  "5", "Full model (Df, kon and koff)",
+             "false",  "6", "Kon/Koff",
+             "false",  "7", "Koff/Df",
+             "false",  "8", "Bound/Df",
+             "false",  "9", "tr/Df",
+             "false", "10", "Kon (fitting 3)",
+             "false", "11", "Koff (fitting 3)",
+             "false", "12", "Df (pure diffusion)",
+             "false", "13", "Bound fraction (fitting 3)",
+             "false", "14", "Residence time (fitting 3)"};
 
   switch comparison
     case { 1, 2, 3, 4 }
       choices = choices(1:5,:);
     case { 5, 6 }
       choices = choices(6:9,:);
+    case { 7, 8 }
+      choices = choices(10:14,:);
     otherwise
       error("Unknown comparison '%i' to select model", comparison)
   endswitch
@@ -166,28 +188,32 @@ endfunction
 ################# Read data from the text files
 function data = data_reader (files, model)
 ## Models:
-## 1 - Raw data
-## 2 - Profile
-## 3 - Pure diffusion
-## 4 - Full model (kon and koff)
-## 5 - Full model (Df, kon and koff)
-## 6 - Scatterplot Kon / Koff
-## 7 - Scatterplot Koff / Df
-## 8 - Scatterplot Bound fraction / Df
-## 9 - Scatterplot residence time / Df
-
+##  1 - Raw data
+##  2 - Profile
+##  3 - Pure diffusion
+##  4 - Full model (kon and koff)
+##  5 - Full model (Df, kon and koff)
+##  6 - Scatterplot Kon / Koff
+##  7 - Scatterplot Koff / Df
+##  8 - Scatterplot Bound fraction / Df
+##  9 - Scatterplot residence time / Df
+## 10 - Bar: Kon (fitting 3)
+## 11 - Bar: Koff (fitting 3)
+## 12 - Bar: Df (pure diffusion)
+## 13 - Bar: bound fraction (fitting 3)
+## 14 - Bar: residence time (fitting 3)
 
   for i = 1:numel(files)
+    if( isempty(files{i}) )   # When comparison is 7, some file list may have empty entries at the end
+      break
+    endif
     load ("-text", files{i});
     data(i).filename    = files{i};
 
-    if (model != 2)
-      data(i).raw_times  = image.timestamps(options.nPre_bleach+1:end);
-      data(i).bin_times  = log_bin.timestamps;
-    endif
-
     switch model
       case 1
+        data(i).raw_times  = image.timestamps(options.nPre_bleach+1:end);
+        data(i).bin_times  = log_bin.timestamps;
         data(i).raw_frap    = bleach.normalized_xy_mean(options.nPre_bleach+1:end);
         data(i).bin_frap    = log_bin.normalized_xy_mean;
       case 2
@@ -199,10 +225,14 @@ function data = data_reader (files, model)
         data(i).nr          = profile.nuclear_radius;
 
       case 3
+        data(i).raw_times  = image.timestamps(options.nPre_bleach+1:end);
+        data(i).bin_times  = log_bin.timestamps;
         data(i).PD_fit      = pure_diffusion.yFitted;
         data(i).PD_Df       = pure_diffusion.Df * 0.01;
 
       case 4
+        data(i).raw_times  = image.timestamps(options.nPre_bleach+1:end);
+        data(i).bin_times  = log_bin.timestamps;
         data(i).FM2_fit     = full_model_2.yFitted;
         data(i).FM2_Df      = full_model_2.Df * 0.01;
         data(i).FM2_kon     = full_model_2.kon;
@@ -210,12 +240,14 @@ function data = data_reader (files, model)
 #        data(i).FM2_ssr     = full_model_2.grid(1,6);
 
       case 5
+        data(i).raw_times  = image.timestamps(options.nPre_bleach+1:end);
+        data(i).bin_times  = log_bin.timestamps;
         data(i).FM3_fit     = full_model_3.yFitted;
         data(i).FM3_Df      = full_model_3.Df * 0.01;
         data(i).FM3_kon     = full_model_3.kon;
         data(i).FM3_koff    = full_model_3.koff;
 
-      case { 6, 7, 8, 9}
+      case { 6, 7, 8, 9, 10, 11, 12, 13, 14 }
         data(i).PD_Df       = pure_diffusion.Df * 0.01;
         data(i).FM2_kon     = full_model_2.kon;
         data(i).FM2_koff    = full_model_2.koff;
@@ -234,15 +266,20 @@ endfunction
 ################# Show the loaded data and remove some
 function data = data_show (data, model);
 ## Models:
-## 1 - Raw data
-## 2 - Profile
-## 3 - Pure diffusion
-## 4 - Full model (kon and koff)
-## 5 - Full model (Df, kon and koff)
-## 6 - Scatterplot Kon / Koff
-## 7 - Scatterplot Koff / Df
-## 8 - Scatterplot Bound fraction / Df
-## 9 - Scatterplot residence time / Df
+##  1 - Raw data
+##  2 - Profile
+##  3 - Pure diffusion
+##  4 - Full model (kon and koff)
+##  5 - Full model (Df, kon and koff)
+##  6 - Scatterplot Kon / Koff
+##  7 - Scatterplot Koff / Df
+##  8 - Scatterplot Bound fraction / Df
+##  9 - Scatterplot residence time / Df
+## 10 - Bar: Kon (fitting 3)
+## 11 - Bar: Koff (fitting 3)
+## 12 - Bar: Df (pure diffusion)
+## 13 - Bar: bound fraction (fitting 3)
+## 14 - Bar: residence time (fitting 3)
 
   switch model
     case 3
@@ -290,7 +327,18 @@ endfunction
 ################# Make the graphs
 function [xMin, xMax, yMin, yMax] = graph_maker (data, model, top, interval)
 
-  persistent xMin xMax yMin yMax;
+  persistent xMin xMax yMin yMax xBar;
+
+  if (strcmpi(data, "clear"))
+    xMin = xMax = yMin = yMax = xBar = [];
+    return
+  endif
+
+  if (isempty(xBar))
+    xBar = 1;
+  else
+    xBar++;
+  endif
 
   if (interval)
     start = interval(1);
@@ -358,7 +406,7 @@ function [xMin, xMax, yMin, yMax] = graph_maker (data, model, top, interval)
           if (xMax < xData) xMax = xData; endif
           if (yMin > yData) yMin = yData; endif
           if (yMax < yData) yMax = yData; endif
-          endif
+        endif
         plot(xData, yData, ...
               "MarkerSize", 10, ...
               "color", "red", ...
@@ -367,6 +415,27 @@ function [xMin, xMax, yMin, yMax] = graph_maker (data, model, top, interval)
         hold on;
         xlabel(xTag);
         ylabel(yTag);
+
+      case { 10, 11, 12, 13 }
+        switch model
+          case { 10 }
+            yData = data(i).FM3_kon;
+          case { 11 }
+            yData = data(i).FM3_koff;
+          case { 12 }
+            yData = data(i).PD_Df;
+          case { 13 }
+            yData = data(i).bound_frac;
+          case { 14 }
+            yData = data(i).resid_time;
+        endswitch
+        xData = xBar;
+        plot(xData, yData, ...
+              "MarkerSize", 10, ...
+              "color", "red", ...
+              "marker", "o", ...
+              "LineStyle", "none");
+        hold on;
 
       otherwise
         error("Unknown model for graph_maker %g", model)
@@ -382,26 +451,33 @@ endfunction
 ################################### Start code #################################
 
 ## Comparisons:
-## 1 - all time points
-## 2 - limit by points
-## 3 - limit by seconds
-## 4 - compare models
-## 5 - Scatterplots (change models)
-## 6 - Scatterplots (change files)
-## 7 - Bar plot with Standard deviation
-## 8 - Kon Koff best guesses
-## 9 - Specify variables and draw the function
+##  1 - all time points
+##  2 - limit by points
+##  3 - limit by seconds
+##  4 - compare models
+##  5 - Scatterplots (change models)
+##  6 - Scatterplots (change files)
+##  7 - Bar plot with dots (change models)
+##  8 - Bar plot with dots (change files) Is this really needed?? Use semilogy
+##  9 - Kon Koff best guesses
+## 10 - Specify variables and draw the function
+
 ##
 ## Models:
-## 1 - Raw data
-## 2 - Profile
-## 3 - Pure diffusion
-## 4 - Full model (kon and koff)
-## 5 - Full model (Df, kon and koff)
-## 6 - Scatterplot Kon / Koff
-## 7 - Scatterplot Koff / Df
-## 8 - Scatterplot Bound fraction / Df
-## 9 - Scatterplot residence time / Df
+##  1 - Raw data
+##  2 - Profile
+##  3 - Pure diffusion
+##  4 - Full model (kon and koff)
+##  5 - Full model (Df, kon and koff)
+##  6 - Scatterplot Kon / Koff
+##  7 - Scatterplot Koff / Df
+##  8 - Scatterplot Bound fraction / Df
+##  9 - Scatterplot residence time / Df
+## 10 - Bar: Kon (fitting 3)
+## 11 - Bar: Koff (fitting 3)
+## 12 - Bar: Df (pure diffusion)
+## 13 - Bar: bound fraction (fitting 3)
+## 14 - Bar: residence time (fitting 3)
 
 
 comparison    = comparison_selector();
@@ -478,8 +554,41 @@ switch comparison
       axis([xMin, xMax, yMin, yMax])
     endfor
 
-  case { 7 }                                              # Bar plot
-
+  case { 7 }                                              # Bar plot with dots
+    bars        = pick_bar_numel;
+    titles      = cell(1,bars);
+    first_time  = 1;
+    for iGraph = 1:(nRow*nCol)
+      model           = pick_model(comparison);
+      titles(iGraph)  = pick_title(iGraph);
+      if (first_time)
+        for iBar = 1:bars
+          files = pick_files();
+          if (first_time)
+            file_list = files;
+          else
+            for iCat = 1:numel(files)
+              file_list{iCat,iBar} = files{iCat};
+            endfor
+          endif
+          graph.data  = data_reader (file_list(:,iBar), model);
+          subplot(nRow, nCol, iGraph)
+          graph_maker (graph.data, model, titles{iGraph}, interval);
+          clear graph;
+          first_time = 0;
+        endfor
+        graph_maker ("clear");
+      else
+        for iBar = 1:bars
+          graph.data  = data_reader (file_list(:,iBar), model);
+          subplot(nRow, nCol, iGraph)
+          graph_maker (graph.data, model, titles{iGraph}, interval);
+          clear graph;
+        endfor
+        graph_maker ("clear");
+      endif
+      axis([0,bars+1])
+    endfor
 
   otherwise
     error("Unrecognized comparison type %i.", comparison);
