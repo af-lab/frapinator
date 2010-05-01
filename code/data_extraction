@@ -24,7 +24,7 @@ elseif (options.flag_timestamps == 1)
     if (numel(image.timestamps) < options.nFrames)
       error ("Number of timestamps found '%g' was larger than the defined number of frames '%g'.", numel(image.timestamps), options.nFrames)
     endif
-    options.timestamps = options.timestamps(1:options.nFrames);
+    image.timestamps = image.timestamps(1:options.nFrames);
   endif
 else
   error("Non supported value for flag timestamps. Flag was set to %g", options.flag_timestamps)
