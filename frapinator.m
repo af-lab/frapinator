@@ -45,11 +45,8 @@ for pkg_i = 1:columns(pkg_des)
 endfor
 
 # Frapinator version
-bzr_cmd                   = sprintf("bzr version-info");
-[bzr_status, main.revno]  = system (bzr_cmd);
-if (bzr_status != 0)
-  error ("Error when checking revision number with command '%s'. Exit code was '%g'", brz_cmd, bzr_status)
-endif
+## FIXME we should be creating an Octave package which supports bin
+##      then the version would be the package version.
 
 ## Set paths
 cur_dir         = pwd;
