@@ -1,4 +1,4 @@
-#! /usr/bin/octave -qf
+#! /usr/local/bin/octave -qf
 ##
 ## Copyright (C) 2010 Carnë Draug <carandraug+dev@gmail.com>
 ##
@@ -44,7 +44,7 @@ endfor
 ##      then the version would be the package version.
 
 ## Set paths
-cur_dir         = pwd;
+cur_dir         = fileparts (mfilename ("fullpath"));
 paths.functions = [cur_dir, filesep, "functions", filesep];
 paths.code      = [cur_dir, filesep, "code", filesep];
 paths.files     = [cur_dir, filesep, "files", filesep];
@@ -72,27 +72,28 @@ endif
 
 source ([paths.code, "user_input"]);
 
-paths.bar_handle = zenity_progress("title", "FRAPINATOR", ...
-                                    "auto close", ...
-                                    "auto kill", ...
-                                    "width", 400);
+nImg = numel (main.file_list);
+paths.bar_handle = waitbar (0,
+  sprintf ("Image %i of %i", 0, nImg),
+  "Name", "FRAPINATOR"
+);
+
 ######################## Start of the big loop #################################
 for iGeneral = 1:length(main.file_list)
 
   file.path                             = main.file_list{iGeneral};
-  [file.dir, file.name, file.extension] = fileparts(file.path);
+  [file.dir, file.name, file.extension] = fileparts (file.path);
   file.log_path                         = [file.dir, filesep, "masks_", file.name, ".tif"];
   file.extracted_path                   = [file.dir, filesep, "extracted_data_", file.name, ".txt"];
   file.plots_path                       = [file.dir, filesep, "plots_", file.name, ".png"];
 
-  message = sprintf("Starting image %s", file.path);
-  disp (message)
+  waitbar (
+    (iGeneral-1) / nImg,
+    paths.bar_handle,
+    sprintf ("Image %d of %d - processing", iGeneral, nImg)
+  );
 
   try
-    z_message = sprintf("Image %d of %d, processing", iGeneral, numel(main.file_list));
-    zenity_progress(paths.bar_handle, ...
-                    "text", z_message,
-                    "percentage",  ((iGeneral-1)/numel(main.file_list))*100 );
 
     ## Read image, times and creates slices
     source([paths.code, "data_extraction"]);
@@ -101,12 +102,11 @@ for iGeneral = 1:length(main.file_list)
     ## Get rid of the image
     image = rmfield (image, "here");
 
-    z_message = sprintf("Image %d of %d, fitting", iGeneral, numel(main.file_list));
-    zenity_progress(paths.bar_handle, ...
-                    "text", z_message,
-                    "percentage",  ((iGeneral-0.5)/numel(main.file_list))*100 );
-
-
+    waitbar (
+      (iGeneral-0.5) / nImg,
+      paths.bar_handle,
+      sprintf ("Image %d of %d - fitting", iGeneral, nImg)
+    );
     ## Do all the fitting
     source([paths.code, "data_fitting"]);
   catch
@@ -173,9 +173,9 @@ for iGeneral = 1:length(main.file_list)
 
   print (file.plots_path, "-dpng", "-S1680,1050")
 
-  message = sprintf("Finished image %s", file.path);
-  disp (message)
   clear -exclusive options main paths;
 
 endfor
-zenity_progress(paths.bar_handle, "close");
+
+close (paths.bar_handle);
+
