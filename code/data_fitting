@@ -18,8 +18,8 @@
 # 2 = data from processed images
 switch options.flag_fit_data
   case 1
-    fitting_times       = log_bin.timestamps;
-    fitting_intensities = log_bin.normalized_xy_mean;
+    fitting_times       = log_bin.timestamps(:);
+    fitting_intensities = log_bin.normalized_xy_mean(:);
   case 2
     fitting_times       = image.timestamps(options.nPre_bleach+1:end);
     fitting_intensities = bleach.normalized_xy_mean(options.nPre_bleach+1:end);
