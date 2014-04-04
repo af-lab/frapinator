@@ -29,9 +29,10 @@ function koffT = fitter_FullModel_start_koff(valRec,tEnd,kon,preProcess)
     koffT = fzero(fTemp,[10e-8,10e+8]);
   endif
 
+endfunction
 
-  ## Subfunction to calculate recovery value
-  function recLevel = frapTemp(koff,tEnd,kon,preProcess)
+## Subfunction to calculate recovery value
+function recLevel = frapTemp(koff,tEnd,kon,preProcess)
   eps1	= 10^(-11);  #  Parameter for avoiding zero division and assuring right limiting process
 
   Df		= preProcess{1};
