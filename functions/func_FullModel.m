@@ -83,6 +83,6 @@ function frap = func_FullModel (tList, parameters, preProcess, flag_fit)
 
   #- Calculate FRAP curve
   frap	= (((U+W).*J1wxi)'*ea+((V+X).*J1wxi)'*eb);    # Eq. (S.16)
-  frap	= frap';                                      # Transform to a column vector
+  frap	= vec (frap);                                      # Transform to a column vector
 
 endfunction

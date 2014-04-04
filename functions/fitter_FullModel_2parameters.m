@@ -53,11 +53,10 @@ function [f, best_fkon, best_fkoff, fit_grid] = fitter_FullModel_2parameters(bin
 	  [f,fParam,kvg,iter,corp,covp,covr,stdresid,ci,r2] = leasqr (bin_timestamps, bin_values, iParam, func_FullModel_for_fit, 0.00000001, 200);
 
 
-
 	  #FIXME code by me, using stdresid before hardcode ssr
   %	ssr						= sum(abs(stdresid));
 	  #FIXME Hardcoded residuals to compare with fitting from nlinfit which gives plain vanilla residuals only
-	  ssr = sum (abs(f'-bin_values).^2);
+	  ssr = sum (abs(f-bin_values).^2);
 
   #	parFit_Summary(i,:)		= [kon koff parFit(1) ci(1,:) parFit(2) ci(2,:) ssr];
 	  fit_grid(i,:)			= [iParam(1) iParam(2) fParam(1) fParam(2) Df ssr];
