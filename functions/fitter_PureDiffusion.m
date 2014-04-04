@@ -35,7 +35,7 @@ function [f DfFit] = fitter_PureDiffusion (nr, distance, rCon, sigma, theta, bin
 
 
   ## Zeros of Bessel-Function from data file
-  zb1_500 = load ("./files/ZerosBessel1_500.txt"); # Read zeros in from file 
+  zb1_500 = ZerosBessel1_500 (); # Read zeros in from file 
   alf     = zb1_500(1:NNN-1);		# Zeros of Bessel function without 0
   al      = [0;alf];				# Zeros of Bessel function with 0
 
