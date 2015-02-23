@@ -1,0 +1,13 @@
+Name: FRAP
+Version: 0.0.2
+Date: yyyy-mm-dd
+Author: Carnë Draug, Davide Mazza, Florian Mueller
+Maintainer: Carnë Draug
+Title: FRAP - Fluorescence Recovery After Photobleaching
+Description: This package provides functions for the analysis of data from a
+ FRAP (Fluorescence Recovery After Photobleaching) experiment.  It provides
+ both common image analysis functions for extracting the recovery curve, and
+ mathematical models for the fluorescence recovery.
+Depends: image (>= 2.0.0), optim (>= 1.0.15), zenity
+License: GPLv3+
+

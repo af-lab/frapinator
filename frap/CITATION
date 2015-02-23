@@ -1,0 +1,16 @@
+The models used on this Octave are described on the following manuscript:
+
+  Mueller, F., Karpova, T. S., Mazza, D., & McNally, J. G. (2012). Monitoring
+  dynamic binding of chromatin proteins in vivo by fluorescence recovery after
+  photobleaching. In Chromatin Remodeling (pp. 153-176). Humana Press.
+
+    @incollection{mueller2012monitoring,
+      title={Monitoring dynamic binding of chromatin proteins in vivo by
+             fluorescence recovery after photobleaching},
+      author={Mueller, Florian and Karpova, Tatiana S and Mazza, Davide
+              and McNally, James G},
+      booktitle={Chromatin Remodeling},
+      pages={153--176},
+      year={2012},
+    }
+
