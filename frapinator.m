@@ -1,6 +1,6 @@
-#! /usr/local/bin/octave -qf
+#!/usr/local/bin/octave -qf
 ##
-## Copyright (C) 2010 Carnë Draug <carandraug+dev@gmail.com>
+## Copyright (C) 2010, 2015 Carnë Draug <carandraug+dev@gmail.com>
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -45,13 +45,41 @@ endfor
 ## Set paths
 cur_dir         = fileparts (mfilename ("fullpath"));
 paths.functions = [cur_dir, filesep, "functions", filesep];
-paths.code      = [cur_dir, filesep, "code", filesep];
-paths.files     = [cur_dir, filesep, "files", filesep];
-paths.options   = [cur_dir, filesep, "options", filesep];
 addpath (paths.functions);
 
 ## Load user options
-source ([paths.options, "options"]);
+## Flags are here
+options.flag_threshold  = 1;      # 0 = automatic threshold using Otsu's method; 1 = manually set threshold in threshold_value
+options.flag_correct    = 1;      # Photobleach correction. 0 = infinite nucleus (no fluorescence loss); 1 = finite nucleus (fluorescence loss)
+options.flag_log_image  = 1;      # 0 = no log image is saved; 1 = log image with important frames and masks is saved
+options.flag_fit_data   = 1;      # Data used for fitting. 1 = logaritmic binned; 2 = data from processed images
+options.flag_timestamps = 1;      # 0 = uses options.tScan to calculate timestamps; 1= reads timestamps from image file
+options.flag_frames     = 1;      # 0 = uses the user defined nFrames; 1 = uses extracted number of frames as nFrames;
+
+## Set variables for image processing
+options.nFrames         = 2000;   # Number of total frames in the image (should be replaced later for length(imfinfo(file_path))
+options.nPre_bleach     = 100;    # Number of prebleach frames
+options.tScan           = 0.033;  # Scan time for one frame [s]
+options.bleach_diameter = 40;     # Diameter of bleached area [px]
+options.pixel_size      = 0.1;    # Size of a pixel [µm]
+options.avg_start       = 10;     # Number of start frame to use when averaging to create image where to find background and cell nucleus
+options.avg_end         = 100;    # Number of final frame to use when averaging to create image where to find background and cell nucleus
+options.pre_start       = 50;     # Number of start frame to use when averaging to create pre-bleach image where to find bleach spot
+options.pre_end         = 100;    # Number of final frame to use when averaging to create pre-bleach image where to find bleach spot
+options.post_start      = 101;    # Number of start frame to use when averaging to create post-bleach image where to find bleach spot
+options.post_end        = 105;    # Number of final frame to use when averaging to create post-bleach image where to find bleach spot
+
+
+options.backg_size      = 30;     # Width (and height) in pixels of the background area
+options.threshold_value = 20;     # Intensity to threshold the first image. Only needed if flag_threshold > 0
+options.nNorm           = 10;     # Number of frames, previous to bleach frame, to use for normalization
+options.binning_start   = 20;     # Number of frames after the bleach to skip before start binning
+options.bleach_factor   = 1.25;   # Factor of change to measure the bleach area from the diameter of the bleach spot
+
+## Set variables for data fitting
+options.resolution      = 2.5;    # Resolution of the image. Will be used for fitting of radial profile
+options.nSkip_profile   = 3;      # Number of radial point which get skipped when fitting the radial intensity profile
+options.Df              = 200;    # Initial guess for Df
 
 ## Sanity checks
 if (options.nNorm > options.nPre_bleach)
@@ -69,7 +97,26 @@ endif
 ################################################################################
 ############################## Start user input ################################
 
-source ([paths.code, "user_input"]);
+## Get file list of files from user
+if (isempty (argv ()))
+  been_here = 0;
+  do
+    [current_files, exit_code] = zenity_file_selection("title", "Choose files to analyze", 'multiple');
+    if (!been_here && exit_code == 0)
+      main.file_list = current_files;
+    elseif (been_here && exit_code == 0)
+      main.file_list = vertcat(main.file_list, current_files);
+    endif
+    been_here = 1;
+  until (exit_code != 0)
+  clear been_here;
+else
+  main.file_list = argv ();
+endif
+
+if (!isfield (main, "file_list"))
+  error ("No file was selected")
+endif
 
 nImg = numel (main.file_list);
 paths.bar_handle = waitbar (0,
@@ -94,10 +141,128 @@ for iGeneral = 1:length(main.file_list)
 
   try
 
+    ##
     ## Read image, times and creates slices
-    source([paths.code, "data_extraction"]);
+    ##
+
+    ## Calculate timestamps
+    if (options.flag_timestamps == 0)
+      image.timestamps  = linspace (0, options.tScan*(options.nFrames-1), options.nFrames);
+    elseif (options.flag_timestamps == 1)
+      image.timestamps  = read_lsm (file.path);
+      if (options.flag_frames)
+        options.nFrames = numel(image.timestamps);
+      else
+        if (numel(image.timestamps) < options.nFrames)
+          error ("Number of timestamps found '%g' was larger than the defined number of frames '%g'.", numel(image.timestamps), options.nFrames)
+        endif
+        image.timestamps = image.timestamps(1:options.nFrames);
+      endif
+    else
+      error("Non supported value for flag timestamps. Flag was set to %g", options.flag_timestamps)
+    endif
+
+    ## Open the image
+    image.here = read_image(file.path, file.extension, options.nFrames);
+    image.here = squeeze (image.here);
+
+    if (ndims(image.here) != 3)
+      error ("Image from file '%s' has not 3 dimensions. It has %g dimensions. Skipping file", file.path, ndims(image.here));
+      clear -exclusive options main paths;
+      continue
+    endif
+
+    ##Stores info from image
+    image.height  = rows(image.here);
+    image.width   = columns(image.here);
+
+    ## Creates useful slices of the image
+    image.slice_avg   = uint8( mean(image.here(:,:,options.avg_start:options.avg_end),3));
+    image.slice_pre   = uint8( mean(image.here(:,:,options.pre_start:options.pre_end),3));
+    image.slice_post  = uint8( mean(image.here(:,:,options.post_start:options.post_end),3));
+    image.bleach      = double(image.slice_pre) - double(image.slice_post);
+
+    ##
     ## Finds ROIs, calculate averages, make corrections to data and calculate profile
-    source([paths.code, "image_processing"]);
+    ##
+    [backg.index, boundaries.backg] ...
+      = finder_background (image.slice_avg, options.backg_size);
+
+    [bleach.index, bleach.center, bleach.radius, boundaries.bleach] ...
+      = finder_bleach (image.bleach, options.bleach_diameter, options.bleach_factor);
+
+    [nucleus.index, boundaries.nucleus] ...
+      = finder_nucleus (image.slice_avg, bleach.center, options.threshold_value,
+                        options.flag_threshold);
+
+    ## Create and save log image
+    # This comes before checking if nucleus is found correctly so that in case stdout is lost, the log image will still show the wrong nucleus
+    if (options.flag_log_image == 1)
+      log_image (
+        image.slice_avg,
+        image.slice_pre,
+        image.slice_post,
+        image.bleach,
+        boundaries.backg,
+        boundaries.bleach,
+        boundaries.nucleus,
+        file.log_path
+      );
+    endif
+
+    ##Check if nucleus found is correct and skip this image if it is not
+    if (numel(nucleus.index) == 0)
+      printf ("Didn't found nucleus in '%s'. Maybe threshold value set too high?", file.path);
+      clear -exclusive options main paths;
+      continue
+    elseif (numel(bleach.index) > numel(nucleus.index))
+      printf ("Skipped analysis of '%s' because found cell region '%g'[px] smaller than bleach spot '%g'[px].", file.path, numel(nucleus.index), numel(bleach.index));
+      clear -exclusive options main paths;
+      continue
+    elseif (numel(nucleus.index) == (image.height * image.width))
+      printf ("Nucleus found in '%s' the size of the whole frame '%g'[px]. Maybe threshold value set to low?", file.path, numel(nucleus.index));
+      clear -exclusive options main paths;
+      continue
+    endif
+
+    ## Find averages of background and subtract it to the image
+    [backg.xy_mean]   = calculator_averages (image.here, options.nFrames,
+                                             backg.index);
+
+    backg.xyz_mean    = mean(backg.xy_mean);
+    image.here        = image.here - backg.xyz_mean;
+
+    ## Find averages of nucleus and correct for photobleach (based on whole nuclear intensity)
+    [nucleus.xy_mean] = calculator_averages (image.here, options.nFrames,
+                                             nucleus.index);
+
+    image.here = edit_photobleach_correction (image.here, options.nPre_bleach,
+                                              options.nFrames, nucleus.xy_mean,
+                                              options.flag_correct);
+
+    ## Find averages of bleach spot
+    [bleach.xy_mean]  = calculator_averages (image.here, options.nFrames,
+                                             bleach.index);
+
+    ## Normalize curve
+    bleach.norm_factor        = mean( bleach.xy_mean(options.nPre_bleach-options.nNorm+1 : options.nPre_bleach) );
+    bleach.normalized_xy_mean = bleach.xy_mean / bleach.norm_factor;
+    ## Calculate value (normalized) that bleach spot should reach to have full recovery
+    bleach.full_recovery      = nucleus.xy_mean(options.nPre_bleach+1) / nucleus.xy_mean(options.nPre_bleach);
+
+    ## Logarithmic binning of the FRAP curve
+    [log_bin.timestamps, log_bin.normalized_xy_mean] ...
+      = calculator_log_binning (bleach.normalized_xy_mean, image.timestamps,
+                                options.nPre_bleach, options.nFrames,
+                                options.binning_start);
+
+    ## Extract Profiles
+    # profile.normalized_intensities is a matrix with all intensities values with each row representing
+    # a time frame and each column the distance from the center of bleach spot
+    [profile.normalized_intensities, profile.distances] ...
+      = calculator_profile (image.here, options.nFrames, options.nPre_bleach,
+                            options.nNorm, bleach.center, bleach.radius);
+
     ## Get rid of the image
     image = rmfield (image, "here");
 
@@ -106,8 +271,57 @@ for iGeneral = 1:length(main.file_list)
       paths.bar_handle,
       sprintf ("Image %d of %d - fitting", iGeneral, nImg)
     );
+
+    ##
     ## Do all the fitting
-    source([paths.code, "data_fitting"]);
+    ##
+
+    ## Data used for fitting.
+    # 1 = logaritmic binned
+    # 2 = data from processed images
+    switch options.flag_fit_data
+      case 1
+        fitting_times       = log_bin.timestamps(:);
+        fitting_intensities = log_bin.normalized_xy_mean(:);
+      case 2
+        fitting_times       = image.timestamps(options.nPre_bleach+1:end);
+        fitting_intensities = bleach.normalized_xy_mean(options.nPre_bleach+1:end);
+      otherwise
+        error ("Non supported flag for data for fitting.\n")
+    endswitch
+
+    ## Fitting of the radial profile
+    [profile.rCon, profile.sigma, profile.theta, profile.fitted] ...
+      = fitter_radial_profile (profile.distances, profile.normalized_intensities(:,options.nPre_bleach+1), 
+                               options.nSkip_profile, options.resolution);
+
+    profile.nuclear_radius = calculator_nuclear_radius (
+      bleach.full_recovery, profile.rCon, profile.sigma, profile.theta,
+      profile.distances(end), max ([image.height, image.width]));
+
+    ## Fitting with pure-diffusion
+    [pure_diffusion.yFitted, pure_diffusion.Df] ...
+      = fitter_PureDiffusion (profile.nuclear_radius, profile.distances(end),
+                              profile.rCon, profile.sigma, profile.theta,
+                              fitting_times, fitting_intensities, options.Df);
+
+    ### Fitting full model
+    ## Preprocessing
+    [FullModel_preProcess] = fitter_FullModel_preProcess (
+      profile.nuclear_radius, profile.distances(end), profile.rCon,
+      profile.sigma, profile.theta, options.Df);
+
+    full_model_2.Df = FullModel_preProcess{1};
+    ## Fitting with 2 parameters (kon and koff)
+    [full_model_2.yFitted, full_model_2.kon, full_model_2.koff, full_model_2.grid ] ...
+      = fitter_FullModel_2parameters (fitting_times, fitting_intensities, FullModel_preProcess);
+
+    ## Fitting with 3 parameters (kon, koff and Df)
+    [full_model_3.yFitted, full_model_3.kon, full_model_3.koff, full_model_3.Df]
+      = fitter_FullModel_3parameters (fitting_times, fitting_intensities,
+                                      FullModel_preProcess, full_model_2.kon,
+                                      full_model_2.koff, options.Df);
+
   catch
     msg     = lasterror.message;
     message = sprintf("Error: %s \n Skipping image %s", msg, file.path);
@@ -130,7 +344,8 @@ for iGeneral = 1:length(main.file_list)
     "full_model_2", ...
     "full_model_3")
 
-  figure (1, "visible", "off")
+  ## FIXME turn visible off only works with fltk
+  figure (1, "visible", "on")
   subplot(2, 3, 1)
   plot (image.timestamps, [backg.xy_mean; bleach.xy_mean; nucleus.xy_mean])
   title("Background, bleach and nucleus intensity")
