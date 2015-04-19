@@ -1,4 +1,4 @@
-## Copyright (C) 2010 Carnë Draug <carandraug+dev@gmail.com>
+## Copyright (C) 2010, 2015 Carnë Draug <carandraug+dev@gmail.com>
 ##
 ## This program is free software; you can redistribute it and/or modify
 ## it under the terms of the GNU General Public License as published by
@@ -153,6 +153,7 @@
 ##   electronic module controller program.
 
 function [timestamps, time_interval] = read_lsm (file)
+  offset_CZ = tiff_tag_read (file, 34412);
 
   [FID, msg] = fopen (file, "r", "native");
   if (msg != 0)
@@ -168,38 +169,6 @@ function [timestamps, time_interval] = read_lsm (file)
   else
     error("First 2 bytes of header returned '%s'. TIFF file expects either 'II' or 'MM'.", byte_order');
   endif
-
-  # Read number 42
-  nTIFF = fread(FID, 1, "uint16", arch);
-  if (nTIFF != 42)
-    error("This is not a TIFF file (missing 42 on header at offset 2. Instead got '%g').", tiff_id);
-  endif
-
-  # Read offset and move for the first IFD
-  offset_IFD = fread(FID, 1, "uint32", arch);
-  status = fseek(FID, offset_IFD, "bof");
-  if (status != 0)
-      error("Error on fseek when moving to first IFD.");
-  endif
-
-  # Read number of entries (tags) in the first IFD and look for the CZ private tag (34412)
-  nTag = fread(FID, 1, "uint16", arch);
-  rTag = 0;                                       # Number of tags already read
-  while (1)                                       # Control is made inside the loop
-    tag = fread(FID, 1, "uint16", arch);          # Tag value (id)
-    rTag++;                                       # Number of tags already read
-    if (tag == 34412)                             # CZ private tag was found
-      fseek(FID, 6, "cof");                       # Move to tag value
-      offset_CZ = fread(FID, 1, "uint32", arch);  # Read the file offset to LSM specific data
-      break
-    elseif (rTag == nTag)                         # Last tag has been read
-      error ("Unable to find LSM private tag with value 34412 after reading through %g of %g tags. Last tag read had value of %g", rTag, nTag, tag)
-    endif
-    status = fseek(FID, 10, "cof");               # Move to the next tag
-    if (status != 0)
-      error("Error on fseek when moving to tag %g of %g. Last tag read had value of %g", rTag, nTag, tag);
-    endif
-  endwhile
 
   byte.TimeInterval     = offset_CZ + 112;
   byte.OffsetTimeStamps = offset_CZ + 132;
