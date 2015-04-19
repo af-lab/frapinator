@@ -327,8 +327,6 @@ for iGeneral = 1:length(main.file_list)
     "full_model_2", ...
     "full_model_3")
 
-  ## FIXME turn visible off only works with fltk
-  figure (1, "visible", "on")
   subplot(2, 3, 1)
   plot (image.timestamps, [backg.xy_mean; bleach.xy_mean; nucleus.xy_mean])
   title("Background, bleach and nucleus intensity")
@@ -375,4 +373,3 @@ for iGeneral = 1:length(main.file_list)
 endfor
 
 close (paths.bar_handle);
-
