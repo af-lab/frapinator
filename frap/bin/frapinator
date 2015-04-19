@@ -20,7 +20,6 @@
 more off;
 page_output_immediately (1);
 
-pkg load zenity;
 pkg load image;
 pkg load optim; # leasqr belongs to optim package
 
@@ -99,24 +98,20 @@ endif
 
 ## Get file list of files from user
 if (isempty (argv ()))
-  been_here = 0;
-  do
-    [current_files, exit_code] = zenity_file_selection("title", "Choose files to analyze", 'multiple');
-    if (!been_here && exit_code == 0)
-      main.file_list = current_files;
-    elseif (been_here && exit_code == 0)
-      main.file_list = vertcat(main.file_list, current_files);
+  [fname, fpath] = uigetfile ({"*.tif;*.tiff", "TIFF-files"},
+                              "Select images to analyze",
+                              "MultiSelect", "on");
+  if (isequal (fname, 0))
+    error ("No files selected");
+  else
+    main.file_list = fullfile (fpath, fname);
+    if (! iscell (main.file_list))
+      main.file_list = {main.file_list};
     endif
-    been_here = 1;
-  until (exit_code != 0)
-  clear been_here;
+  endif
 else
   main.file_list = argv ();
-endif
-
-if (!isfield (main, "file_list"))
-  error ("No file was selected")
-endif
+end
 
 nImg = numel (main.file_list);
 paths.bar_handle = waitbar (0,

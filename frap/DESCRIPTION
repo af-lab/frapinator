@@ -8,6 +8,5 @@ Description: This package provides functions for the analysis of data from a
  FRAP (Fluorescence Recovery After Photobleaching) experiment.  It provides
  both common image analysis functions for extracting the recovery curve, and
  mathematical models for the fluorescence recovery.
-Depends: image (>= 2.0.0), optim (>= 1.0.15), zenity
+Depends: octave (>= 4.0.0), image (>= 2.0.0), optim (>= 1.0.15)
 License: GPLv3+
-
