@@ -226,23 +226,23 @@ for iGeneral = 1:length(main.file_list)
     endif
 
     ## Find averages of background and subtract it to the image
-    [backg.xy_mean]   = calculator_averages (image.here, options.nFrames,
-                                             backg.index);
+    backg.xy_mean = frap_mean (image.here(:,:,1:options.nFrames), backg.index);
 
     backg.xyz_mean    = mean(backg.xy_mean);
     image.here        = image.here - backg.xyz_mean;
 
-    ## Find averages of nucleus and correct for photobleach (based on whole nuclear intensity)
-    [nucleus.xy_mean] = calculator_averages (image.here, options.nFrames,
-                                             nucleus.index);
+    ## Find averages of nucleus and correct for photobleach (based on
+    ## whole nuclear intensity)
+    nucleus.xy_mean = frap_mean (image.here(:,:,1:options.nFrames),
+                                 nucleus.index);
 
     image.here = edit_photobleach_correction (image.here, options.nPre_bleach,
                                               options.nFrames, nucleus.xy_mean,
                                               options.flag_correct);
 
     ## Find averages of bleach spot
-    [bleach.xy_mean]  = calculator_averages (image.here, options.nFrames,
-                                             bleach.index);
+    bleach.xy_mean = frap_mean (image.here(:,:,1:options.nFrames),
+                                 bleach.index);
 
     ## Normalize curve
     bleach.norm_factor        = mean( bleach.xy_mean(options.nPre_bleach-options.nNorm+1 : options.nPre_bleach) );
