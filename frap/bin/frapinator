@@ -15,13 +15,10 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program; if not, see <http://www.gnu.org/licenses/>.
 
-################################################################################
-################################ Start settings ################################
 more off;
 page_output_immediately (1);
 
-pkg load image;
-pkg load optim; # leasqr belongs to optim package
+pkg load frap;
 
 ## Get octave, loaded packages, and frapinator versions 
 # Octave version
@@ -36,15 +33,6 @@ for pkg_i = 1:columns(pkg_des)
     pkg_store_i++;
   endif
 endfor
-
-# Frapinator version
-## FIXME we should be creating an Octave package which supports bin
-##      then the version would be the package version.
-
-## Set paths
-cur_dir         = fileparts (mfilename ("fullpath"));
-paths.functions = [cur_dir, filesep, "functions", filesep];
-addpath (paths.functions);
 
 ## Load user options
 ## Flags are here
