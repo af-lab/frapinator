@@ -152,7 +152,7 @@
 ##   Note: Timestamps are in seconds relative to the start time of the LSM 510
 ##   electronic module controller program.
 
-function [timestamps, time_interval] = read_lsm (file)
+function [timestamps, time_interval] = frap_read_lsm_timepoints (file)
   offset_CZ = tiff_tag_read (file, 34412);
 
   [FID, msg] = fopen (file, "r", "native");

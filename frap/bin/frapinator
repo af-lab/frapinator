@@ -132,7 +132,7 @@ for iGeneral = 1:length(main.file_list)
     if (options.flag_timestamps == 0)
       image.timestamps  = linspace (0, options.tScan*(options.nFrames-1), options.nFrames);
     elseif (options.flag_timestamps == 1)
-      image.timestamps  = read_lsm (file.path);
+      image.timestamps  = frap_read_lsm_timepoints (file.path);
       if (options.flag_frames)
         options.nFrames = numel(image.timestamps);
       else
