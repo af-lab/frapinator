@@ -206,11 +206,9 @@ function [timestamps, time_interval] = frap_read_lsm_timepoints (file)
   if (status != 0)
     error("Error on fseek when moving to %g as pointed by OffsetTimeStamps.", offset_timestamps);
   endif
-  size    = fread(FID, 1, "int32", arch);
-  number  = fread(FID, 1, "int32", arch);
-  for i = 1:number
-    timestamps(i) = fread(FID, 1, "float64", arch);
-  endfor
+  bytesize    = fread (FID, 1, "int32", arch);
+  number      = fread (FID, 1, "int32", arch);
+  timestamps  = fread (FID, number, "float64", arch);
   timestamps -= timestamps(1);
 
   fclose (FID);
