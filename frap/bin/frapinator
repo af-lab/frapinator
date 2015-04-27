@@ -20,22 +20,17 @@ page_output_immediately (1);
 
 pkg load frap;
 
-## Get octave, loaded packages, and frapinator versions 
-# Octave version
-main.octave_version = version;
+## Store versions of everything in the system for log files
+main.versions = ver ();
 
-# Loaded packages version
-[pkg_des, pkg_status] = pkg ("describe", "all");
-pkg_store_i = 1;
-for pkg_i = 1:columns(pkg_des)
-  if ( strcmpi(pkg_status{pkg_i}, "loaded") )
-    main.packages{pkg_store_i} = sprintf("%s: %s", pkg_des{pkg_i}.name, pkg_des{pkg_i}.version);
-    pkg_store_i++;
-  endif
-endfor
+#############
+## Options ##
+#############
 
-## Load user options
-## Flags are here
+## TODO we should have a way to set them interactively or by command-line
+##      * should implement getopt in octave core
+
+## Flags
 options.flag_threshold  = 1;      # 0 = automatic threshold using Otsu's method; 1 = manually set threshold in threshold_value
 options.flag_correct    = 1;      # Photobleach correction. 0 = infinite nucleus (no fluorescence loss); 1 = finite nucleus (fluorescence loss)
 options.flag_log_image  = 1;      # 0 = no log image is saved; 1 = log image with important frames and masks is saved
@@ -43,7 +38,7 @@ options.flag_fit_data   = 1;      # Data used for fitting. 1 = logaritmic binned
 options.flag_timestamps = 1;      # 0 = uses options.tScan to calculate timestamps; 1= reads timestamps from image file
 options.flag_frames     = 1;      # 0 = uses the user defined nFrames; 1 = uses extracted number of frames as nFrames;
 
-## Set variables for image processing
+## Variables for image processing
 options.nFrames         = 2000;   # Number of total frames in the image (should be replaced later for length(imfinfo(file_path))
 options.nPre_bleach     = 100;    # Number of prebleach frames
 options.tScan           = 0.033;  # Scan time for one frame [s]
@@ -56,21 +51,23 @@ options.pre_end         = 100;    # Number of final frame to use when averaging 
 options.post_start      = 101;    # Number of start frame to use when averaging to create post-bleach image where to find bleach spot
 options.post_end        = 105;    # Number of final frame to use when averaging to create post-bleach image where to find bleach spot
 
-
 options.backg_size      = 30;     # Width (and height) in pixels of the background area
 options.threshold_value = 20;     # Intensity to threshold the first image. Only needed if flag_threshold > 0
 options.nNorm           = 10;     # Number of frames, previous to bleach frame, to use for normalization
 options.binning_start   = 20;     # Number of frames after the bleach to skip before start binning
 options.bleach_factor   = 1.25;   # Factor of change to measure the bleach area from the diameter of the bleach spot
 
-## Set variables for data fitting
+## Variables for data fitting
 options.resolution      = 2.5;    # Resolution of the image. Will be used for fitting of radial profile
 options.nSkip_profile   = 3;      # Number of radial point which get skipped when fitting the radial intensity profile
 options.Df              = 200;    # Initial guess for Df
 
-## Sanity checks
+#################
+## Input check ##
+#################
+
 if (options.nNorm > options.nPre_bleach)
-  error("The number of frames to use for normalization of values (%g) is larger than the number of pre-bleach frames (%g)", options.nNorm, options.nPre_bleach);
+  error ("The number of frames to use for normalization of values (%g) is larger than the number of pre-bleach frames (%g)", options.nNorm, options.nPre_bleach);
 elseif (options.binning_start < 0 )
   error ("The number of frames that should be skipped before start binning is lower than zero (%g)", options.binning_start)
 elseif (options.avg_start > options.avg_end)
@@ -81,8 +78,9 @@ elseif (options.post_start > options.post_end)
   error ("The frame number to start averaging for the post-bleach image (%g), is after the frame number to end (%g)", options.ost_start, optons.post_end)
 endif
 
-################################################################################
-############################## Start user input ################################
+################
+## User input ##
+################
 
 ## Get file list of files from user
 if (isempty (argv ()))
