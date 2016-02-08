@@ -15,10 +15,13 @@
 ## You should have received a copy of the GNU General Public License
 ## along with this program; if not, see <http://www.gnu.org/licenses/>.
 
+pkg load frap;
+pkg load bioformats;
+javaMethod ("enableLogging", "loci.common.DebugTools", "ERROR");
+
 more off;
 page_output_immediately (1);
 
-pkg load frap;
 
 ## Store versions of everything in the system for log files
 main.versions = ver ();
@@ -61,6 +64,30 @@ options.bleach_factor   = 1.25;   # Factor of change to measure the bleach area 
 options.resolution      = 2.5;    # Resolution of the image. Will be used for fitting of radial profile
 options.nSkip_profile   = 3;      # Number of radial point which get skipped when fitting the radial intensity profile
 options.Df              = 200;    # Initial guess for Df
+
+
+## Reads the first NFRAMES from the image FPATH.  If NFRAMES is ommited,
+## reads all of the frames.  Frames will be concatenated on the 3rd dimension.
+function [img] = read_image (fpath, nframes)
+  narginchk (1, 2);
+
+  reader = bfGetReader (fpath);
+  nplanes = reader.getImageCount ();
+  if (nargin < 2)
+    nframes = nplanes;
+  elseif (nframes > nplanes)
+    error ("read_image: number of planes (%i) in '%s' is less than requested %i",
+           nplanes, fpath, nframes);
+  endif
+
+  img = bfGetPlane (reader, 1);
+  img = postpad (img, nframes, 0, 3);
+  for p_idx = 2:nframes
+    img(:,:,p_idx) = bfGetPlane (reader, p_idx);
+  endfor
+endfunction
+
+
 
 #################
 ## Input check ##
@@ -108,11 +135,11 @@ paths.bar_handle = waitbar (0,
 ######################## Start of the big loop #################################
 for iGeneral = 1:length(main.file_list)
 
-  file.path                             = main.file_list{iGeneral};
-  [file.dir, file.name, file.extension] = fileparts (file.path);
-  file.log_path                         = [file.dir, filesep, "masks_", file.name, ".tif"];
-  file.extracted_path                   = [file.dir, filesep, "extracted_data_", file.name, ".txt"];
-  file.plots_path                       = [file.dir, filesep, "plots_", file.name, ".png"];
+  file.path             = main.file_list{iGeneral};
+  [file.dir, file.name] = fileparts (file.path);
+  file.log_path         = [file.dir, filesep, "masks_", file.name, ".tif"];
+  file.extracted_path   = [file.dir, filesep, "extracted_data_", file.name, ".txt"];
+  file.plots_path       = [file.dir, filesep, "plots_", file.name, ".png"];
 
   waitbar (
     (iGeneral-1) / nImg,
@@ -144,7 +171,7 @@ for iGeneral = 1:length(main.file_list)
     endif
 
     ## Open the image
-    image.here = read_image(file.path, file.extension, options.nFrames);
+    image.here = read_image(file.path, options.nFrames);
     image.here = squeeze (image.here);
 
     if (ndims(image.here) != 3)
