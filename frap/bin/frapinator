@@ -298,7 +298,7 @@ for iGeneral = 1:length(main.file_list)
       = fitter_FullModel_2parameters (fitting_times, fitting_intensities, FullModel_preProcess);
 
     ## Fitting with 3 parameters (kon, koff and Df)
-    [full_model_3.yFitted, full_model_3.kon, full_model_3.koff, full_model_3.Df]
+    [full_model_3.yFitted, full_model_3.kon, full_model_3.koff, full_model_3.Df] ...
       = fitter_FullModel_3parameters (fitting_times, fitting_intensities,
                                       FullModel_preProcess, full_model_2.kon,
                                       full_model_2.koff, options.Df);
