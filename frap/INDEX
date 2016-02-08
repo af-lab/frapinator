@@ -1,0 +1,23 @@
+frap >> Fluorescence Recovery After Photobleaching
+FRAP model
+  fitter_FullModel_2parameters.m
+  fitter_FullModel_3parameters.m
+  fitter_FullModel_preProcess.m
+  fitter_FullModel_start_koff.m
+  fitter_PureDiffusion.m
+  fitter_radial_profile.m
+  func_FullModel.m
+  func_PureDiffusion.m
+  func_radial_profile.m
+Image Analysis
+  calculator_log_binning.m
+  calculator_nuclear_radius.m
+  calculator_profile.m
+  edit_photobleach_correction.m
+  finder_background.m
+  finder_bleach.m
+  finder_nucleus.m
+  frap_mean.m
+  log_image.m
+Image IO
+  frap_read_lsm_timepoints.m
