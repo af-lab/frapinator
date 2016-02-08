@@ -29,11 +29,11 @@ help:
 %.tar.gz: %
 	tar -c -f - --posix -C "$(TARGET_DIR)" "$(notdir $<)" | gzip -9n > "$@"
 
-$(RELEASE_DIR): .hg/dirstate
+$(RELEASE_TARBALL): ../.git/$(shell git symbolic-ref HEAD)
 	@echo "Creating package version $(VERSION) release ..."
 	-rm -rf "$@"
-	hg archive --exclude ".hg*" --exclude "Makefile" --type files "$@"
-	chmod -R a+rX,u+w,go-w "$@"
+	if ! test -e $(TARGET_DIR); then mkdir $(TARGET_DIR); fi
+	git archive --prefix frap/ --format=tar HEAD | gzip -9n > "$@"
 
 $(HTML_DIR): install
 	@echo "Generating HTML documentation. This may take a while ..."
